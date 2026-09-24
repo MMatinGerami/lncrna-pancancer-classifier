@@ -1,0 +1,13 @@
+{
+  "universe": "protein_coding",
+  "model": "xgboost",
+  "best_params": {
+    "clf__colsample_bytree": 0.3,
+    "clf__learning_rate": 0.1,
+    "clf__max_depth": 3,
+    "clf__n_estimators": 200,
+    "clf__subsample": 0.8
+  },
+  "cv_macro_f1": 0.9271622661703649,
+  "minutes": 12.24314964612325
+}

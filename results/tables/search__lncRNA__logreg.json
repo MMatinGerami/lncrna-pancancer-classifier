@@ -1,0 +1,9 @@
+{
+  "universe": "lncRNA",
+  "model": "logreg",
+  "best_params": {
+    "clf__C": 0.1
+  },
+  "cv_macro_f1": 0.9381937617635018,
+  "minutes": 0.30770556529362997
+}

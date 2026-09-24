@@ -1,0 +1,41 @@
+# Default experiment configuration. All paths are relative to the repository root.
+seed: 42
+
+paths:
+  raw: data/raw
+  processed: data/processed
+  results: results
+
+data:
+  expression: tcga_RSEM_gene_tpm.gz          # UCSC Xena Toil recompute, log2(TPM + 0.001)
+  annotation_gtf: gencode.v23.annotation.gtf.gz
+  clinical: Survival_SupplementalTable_S1_20171025_xena_sp
+  primary_sample_types: ["01", "03"]         # primary solid tumour, primary blood-derived cancer
+  metastatic_sample_types: ["06"]
+  exclude_sex_chromosomes: true              # avoid learning patient sex (e.g. XIST) instead of tissue
+  min_class_size: 30
+
+split:
+  test_size: 0.2
+  cv_folds: 5
+
+features:
+  top_k_variance: 2000                       # selected inside each training fold
+  budget_grid: [25, 50, 100, 250, 500, 1000, 2000, 5000]
+
+models:
+  logreg:
+    C: [0.01, 0.1, 1.0]
+  xgboost:
+    max_depth: [3, 5]
+    learning_rate: [0.1]
+    n_estimators: [200]
+    subsample: [0.8]
+    colsample_bytree: [0.3]
+  mlp:
+    hidden_dims: [[512, 256]]
+    dropout: [0.2, 0.5]
+    weight_decay: [0.0001, 0.001]
+    lr: [0.001]
+    max_epochs: [200]
+    batch_size: [256]

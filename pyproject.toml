@@ -1,0 +1,44 @@
+[project]
+name = "lncpan"
+version = "0.1.0"
+description = "Pan-cancer tissue-of-origin classification from the long non-coding RNA transcriptome"
+readme = "README.md"
+authors = [
+    { name = "Matin Gerami", email = "mmatin.gerami@gmail.com" }
+]
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = [
+    "joblib>=1.6.0",
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.3",
+    "pandas>=3.0.6",
+    "pyarrow>=25.0.1",
+    "pyyaml>=6.0.3",
+    "scikit-learn>=1.9.1",
+    "seaborn>=0.13.2",
+    "shap>=0.52.0",
+    "torch>=2.14.0",
+    "tqdm>=4.70.1",
+    "xgboost>=3.4.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.31,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.8",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "NPY"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

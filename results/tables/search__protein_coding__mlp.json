@@ -1,0 +1,17 @@
+{
+  "universe": "protein_coding",
+  "model": "mlp",
+  "best_params": {
+    "clf__batch_size": 256,
+    "clf__dropout": 0.5,
+    "clf__hidden_dims": [
+      512,
+      256
+    ],
+    "clf__lr": 0.001,
+    "clf__max_epochs": 200,
+    "clf__weight_decay": 0.0001
+  },
+  "cv_macro_f1": 0.9396315900033629,
+  "minutes": 1.5250797351201375
+}

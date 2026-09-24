@@ -1,0 +1,9 @@
+{
+  "universe": "protein_coding",
+  "model": "logreg",
+  "best_params": {
+    "clf__C": 0.1
+  },
+  "cv_macro_f1": 0.9365996219176285,
+  "minutes": 0.4034850200017293
+}
