@@ -153,6 +153,36 @@ Design decisions that matter for a trustworthy estimate:
 - **Calibration is reported**, not just accuracy: a tissue-of-origin call is only useful
   clinically if its confidence can be trusted.
 
+## Uncertainty and robustness
+
+Three analyses added after the benchmark ask where the classifier should not be trusted.
+Full numbers are in [`MODEL_CARD.md`](MODEL_CARD.md).
+
+**Prediction sets with a guarantee** (`scripts/08_conformal.py`). Split conformal prediction
+turns the probabilities into a set of candidate cancer types per tumour with a stated error
+rate, using 15% of the training split as a calibration set. At α = 0.10 with one global
+threshold, 90.7% of test tumours get a single cancer type and 9.3% get an empty set, which is
+an abstention; 98.8% of the non-empty sets contain the true type. The same threshold covers
+only 76% of the external melanoma metastases: a global guarantee does not survive a
+distribution shift. One threshold per class restores coverage (0.945 on the metastases) at
+the cost of sets of about five types, because rare classes have few calibration samples.
+
+![conformal](results/figures/fig8_conformal.png)
+
+**Subgroups** (`scripts/09_subgroups.py`). Accuracy is the same for women and men and across
+age groups. It is lower for stage III and IV tumours (0.935 and 0.925, wide intervals) and
+clearly lower for cancer types with fewer than 100 training tumours: 0.887 against 0.975 for
+types with 300 or more, with an expected calibration error of 0.073 against 0.009. Rare
+classes are where the model is both less accurate and over-confident.
+
+![subgroups](results/figures/fig9_subgroups.png)
+
+**Learning curve** (`scripts/10_learning_curve.py`). With 746 training tumours (10%), the
+lncRNA model already reaches macro-F1 0.895 and the protein-coding model 0.878; the gap in
+favour of lncRNAs holds at every training-set size.
+
+<p align="center"><img src="results/figures/fig10_learning_curve.png" width="60%"></p>
+
 ## Reproduce
 
 Requires [uv](https://docs.astral.sh/uv/) and ~3 GB of disk. On macOS, XGBoost needs
@@ -161,7 +191,7 @@ Requires [uv](https://docs.astral.sh/uv/) and ~3 GB of disk. On macOS, XGBoost n
 ```bash
 uv sync
 make data       # download TCGA (UCSC Xena) + GENCODE v23          (~750 MB)
-make all        # prepare → benchmark → budget → interpret → external → figures → ablation
+make all        # prepare, benchmark, budget, interpret, external, figures, ablation, conformal, subgroups, curve
 make test       # unit tests
 ```
 
