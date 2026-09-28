@@ -1,0 +1,5 @@
+alpha,variant,coverage,mean_size,empty_frac,coverage_poly_a,coverage_capture
+0.1,marginal,0.0,0.0,1.0,0.0,0.0
+0.1,class_conditional,0.09382151029748284,5.0,0.0,0.09411764705882353,0.09278350515463918
+0.05,marginal,0.0,0.0,1.0,0.0,0.0
+0.05,class_conditional,0.2242562929061785,16.0,0.0,0.2411764705882353,0.16494845360824742

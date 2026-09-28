@@ -10,4 +10,8 @@ fetch "$XT/probeMap%2Fgencode.v23.annotation.gene.probemap"      gencode.v23.ann
 fetch "$XP/TCGA_phenotype_denseDataOnlyDownload.tsv.gz"           TCGA_phenotype_denseDataOnlyDownload.tsv.gz
 fetch "$XP/Survival_SupplementalTable_S1_20171025_xena_sp"        Survival_SupplementalTable_S1_20171025_xena_sp
 fetch "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_23/gencode.v23.annotation.gtf.gz" gencode.v23.annotation.gtf.gz
+# MET500 metastatic cohort (Robinson et al. 2017), UCSC Xena public hub: external validation
+XM=https://ucscpublic.xenahubs.net/download/MET500/geneExpression
+fetch "$XM/M.mx.log2.txt.gz"                                    MET500_M.mx.log2.txt.gz
+fetch "$XM/M.meta.plus.txt"                                     MET500_M.meta.plus.txt
 shasum -a 256 * > SHA256SUMS
