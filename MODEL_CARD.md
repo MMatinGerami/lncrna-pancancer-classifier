@@ -45,6 +45,10 @@ Research prototype. Not a medical device and not validated for clinical use.
 
 The clear weakness is rare cancer types: accuracy drops by about nine points and the model is over-confident on them. Late-stage tumours are somewhat harder, with wide intervals. No sex difference is detectable.
 
+## Unseen sites
+
+Five-fold cross-validation of the training split with every tissue source site confined to one fold (StratifiedGroupKFold) gives macro-F1 0.895 ± 0.013 for the lncRNA model, against 0.938 ± 0.011 with random stratified folds (protein-coding: 0.894 vs 0.937). Performance reported on the random test split therefore overstates what to expect at a new centre by about four points.
+
 ## Uncertainty
 
 Split conformal prediction (`scripts/08_conformal.py`, 15% of the training split held out for calibration):
@@ -63,6 +67,7 @@ An empty set is an abstention; among non-empty sets at α = 0.10, 98.8% contain 
 - Rare classes (fewer than 100 training tumours) are less accurate and less well calibrated.
 - Cancers of the same organ (colon vs rectum, oesophagus vs stomach) are not reliably separated; this reflects biology as much as the model.
 - Coverage guarantees assume test data are exchangeable with the calibration data, which the metastases result shows does not hold under shift.
+- Random test splits share hospital sites with the training data; the held-out-site estimate above is the one to quote for a new centre.
 - Clinical metadata used for subgroups are missing for many patients (stage for 1,340 of 1,868 test tumours).
 
 ## Intended use

@@ -183,6 +183,15 @@ favour of lncRNAs holds at every training-set size.
 
 <p align="center"><img src="results/figures/fig10_learning_curve.png" width="60%"></p>
 
+**Unseen hospital sites** (`scripts/11_site_holdout.py`). TCGA barcodes name the tissue
+source site, and random cross-validation lets the same hospital appear in training and test
+folds. Cross-validating the training split with every site kept in a single fold lowers
+macro-F1 from 0.938 to 0.895 for the lncRNA model and from 0.937 to 0.894 for the
+protein-coding model: about four points is the cost of moving to a centre the model has never
+seen, and it is the same for both gene sets.
+
+<p align="center"><img src="results/figures/fig11_site_holdout.png" width="55%"></p>
+
 ## Reproduce
 
 Requires [uv](https://docs.astral.sh/uv/) and ~3 GB of disk. On macOS, XGBoost needs
@@ -191,7 +200,7 @@ Requires [uv](https://docs.astral.sh/uv/) and ~3 GB of disk. On macOS, XGBoost n
 ```bash
 uv sync
 make data       # download TCGA (UCSC Xena) + GENCODE v23          (~750 MB)
-make all        # prepare, benchmark, budget, interpret, external, figures, ablation, conformal, subgroups, curve
+make all        # prepare, benchmark, budget, interpret, external, figures, ablation, conformal, subgroups, curve, sites
 make test       # unit tests
 ```
 

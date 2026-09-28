@@ -1,6 +1,6 @@
-.PHONY: all data prepare benchmark budget interpret external figures ablation conformal subgroups curve test lint
+.PHONY: all data prepare benchmark budget interpret external figures ablation conformal subgroups curve sites test lint
 
-all: prepare benchmark budget interpret external figures ablation conformal subgroups curve
+all: prepare benchmark budget interpret external figures ablation conformal subgroups curve sites
 
 data:        ; bash scripts/download_data.sh
 prepare:     ; uv run python scripts/01_prepare_data.py
@@ -13,5 +13,6 @@ ablation:    ; uv run python scripts/07_ablation_sex_chromosomes.py
 conformal:   ; uv run python scripts/08_conformal.py
 subgroups:   ; uv run python scripts/09_subgroups.py
 curve:       ; uv run python scripts/10_learning_curve.py
+sites:       ; uv run python scripts/11_site_holdout.py
 test:        ; uv run pytest -q
 lint:        ; uv run ruff check . && uv run ruff format --check .

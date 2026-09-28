@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0 (2026-09-28)
+
+- Held-out hospital site cross-validation (`scripts/11_site_holdout.py`): about four points of macro-F1 are lost when every tissue source site is unseen in training.
+- Citation file.
+
 ## 0.2.0 (2026-09-28)
 
 - Conformal prediction sets with marginal and class-conditional guarantees (`lncpan.conformal`, `scripts/08_conformal.py`), evaluated on the test split and on the external melanoma metastases.
