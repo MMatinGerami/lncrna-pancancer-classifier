@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 
+import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -88,6 +89,25 @@ def main() -> None:
                                 score=score, alpha=alpha, variant=variant
                             )
                         )
+    # the refit model and its calibration thresholds, for `lncpan predict`
+    joblib.dump(model, res / "models" / f"{UNIVERSE}__logreg_conformal.joblib")
+    thresholds = {
+        "universe": UNIVERSE,
+        "classes": ds.classes.tolist(),
+        "calibration_samples": int(len(y_cal)),
+        "lac": {
+            str(a): {
+                "marginal": quantile(nonconformity(p_cal, y_cal, "lac"), a),
+                "class_conditional": class_conditional_quantiles(
+                    nonconformity(p_cal, y_cal, "lac"), y_cal, a, n_classes
+                ).tolist(),
+            }
+            for a in ALPHAS
+        },
+    }
+    (res / "models" / f"{UNIVERSE}__conformal_thresholds.json").write_text(
+        json.dumps(thresholds, indent=1)
+    )
     summary = pd.DataFrame(rows)
     summary.to_csv(tables / "conformal_summary.csv", index=False)
     per_class = pd.concat(per_class, ignore_index=True)

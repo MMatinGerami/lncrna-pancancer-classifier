@@ -1,6 +1,6 @@
 [project]
 name = "lncpan"
-version = "0.3.0"
+version = "0.4.0"
 description = "Pan-cancer tissue-of-origin classification from the long non-coding RNA transcriptome"
 readme = "README.md"
 authors = [
@@ -22,6 +22,9 @@ dependencies = [
     "tqdm>=4.70.1",
     "xgboost>=3.4.1",
 ]
+
+[project.scripts]
+lncpan = "lncpan.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.11.31,<0.12.0"]
