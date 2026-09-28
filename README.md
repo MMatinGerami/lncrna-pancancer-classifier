@@ -1,19 +1,20 @@
 # lncRNA-only pan-cancer tissue-of-origin classification
 
-**Can long non-coding RNAs alone tell which organ a tumour came from?**
+This project tests whether long non-coding RNAs (lncRNAs) alone can identify a tumour's tissue of origin.
 
 I spent the last year of my undergraduate degree on a single lncRNA, *LINC01561*, in
-colorectal cancer: TCGA analysis, qPCR on patient tissue, siRNA knockdown. What stayed with me
-was how *tissue-specific* lncRNAs are compared with most protein-coding genes
-([Yan et al., 2015](https://doi.org/10.1016/j.ccell.2015.09.006)). This project asks whether
-that specificity is strong enough to identify a tumour's tissue of origin from lncRNAs alone.
+colorectal cancer: TCGA analysis, qPCR on patient tissue, siRNA knockdown. lncRNAs are known to be more
+*tissue-specific* than most protein-coding genes
+([Yan et al., 2015](https://doi.org/10.1016/j.ccell.2015.09.006)), and this project asks whether
+that specificity is enough to identify a tumour's tissue of origin from lncRNAs alone.
+Built in September 2026, at the start of my M1.
 
 The question has a clinical side. In 3–5% of patients the cancer is found as metastases and
 the primary site is never located (*cancer of unknown primary*); expression-based classifiers
 have been proposed to help ([Grewal et al., 2019](https://doi.org/10.1001/jamanetworkopen.2019.2597)),
 but they are built on protein-coding genes.
 
-**Short answer:** yes. On 9,337 TCGA tumours from 33 cancer types, lncRNA-only models are at
+**Summary.** On 9,337 TCGA tumours from 33 cancer types, lncRNA-only models are at
 least as accurate as protein-coding models, need fewer genes to get there, and recognise the
 tissue of origin of metastases from patients they have never seen.
 
@@ -46,9 +47,9 @@ Each model uses the 2,000 most variable genes of its universe; hyperparameters w
 
 ![benchmark](results/figures/fig2_benchmark.png)
 
-**The linear model wins.** I expected XGBoost or the MLP to come out on top; they don't. With
-~7,500 training tumours and features this tissue-specific, extra model capacity buys nothing,
-and the regularised linear model is also the best calibrated. The MLP's higher ECE is mostly
+**The regularised linear model performs best.** With ~7,500 training tumours and features this
+tissue-specific, XGBoost and the MLP add no accuracy, and the linear model is also the best
+calibrated. The MLP's higher ECE is mostly
 label smoothing, which softens its probabilities on purpose.
 
 ### Where the errors are
