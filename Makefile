@@ -1,6 +1,6 @@
-.PHONY: all data prepare benchmark budget interpret external figures ablation conformal subgroups curve sites test lint
+.PHONY: all data prepare benchmark budget interpret external figures ablation conformal subgroups curve sites met500 test lint docker
 
-all: prepare benchmark budget interpret external figures ablation conformal subgroups curve sites
+all: prepare benchmark budget interpret external figures ablation conformal subgroups curve sites met500
 
 data:        ; bash scripts/download_data.sh
 prepare:     ; uv run python scripts/01_prepare_data.py
@@ -14,5 +14,7 @@ conformal:   ; uv run python scripts/08_conformal.py
 subgroups:   ; uv run python scripts/09_subgroups.py
 curve:       ; uv run python scripts/10_learning_curve.py
 sites:       ; uv run python scripts/11_site_holdout.py
+met500:      ; uv run python scripts/12_met500.py
+docker:      ; docker build -t lncpan . && docker run --rm -v "$$PWD/data:/app/data" -v "$$PWD/results:/app/results" lncpan make test
 test:        ; uv run pytest -q
 lint:        ; uv run ruff check . && uv run ruff format --check .

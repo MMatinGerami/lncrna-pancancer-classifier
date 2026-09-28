@@ -49,6 +49,10 @@ The clear weakness is rare cancer types: accuracy drops by about nine points and
 
 Five-fold cross-validation of the training split with every tissue source site confined to one fold (StratifiedGroupKFold) gives macro-F1 0.895 ± 0.013 for the lncRNA model, against 0.938 ± 0.011 with random stratified folds (protein-coding: 0.894 vs 0.937). Performance reported on the random test split therefore overstates what to expect at a new centre by about four points.
 
+## External validation (MET500, Robinson et al. 2017)
+
+437 patients with metastatic biopsies from another institution (poly-A and capture libraries, FPKM quantification). The public matrix contains no lncRNAs from this project's universe, so only the protein-coding model can be evaluated: top-1 accuracy 0.659 (95% CI 0.613 to 0.707), top-3 0.815, similar for poly-A (0.668) and capture (0.629) libraries. Given no informative input, the lncRNA model's conformal sets are all empty (abstention).
+
 ## Uncertainty
 
 Split conformal prediction (`scripts/08_conformal.py`, 15% of the training split held out for calibration):
@@ -63,6 +67,7 @@ An empty set is an abstention; among non-empty sets at α = 0.10, 98.8% contain 
 
 ## Limitations
 
+- The lncRNA model can only be used where lncRNAs are quantified; MET500, like many clinical pipelines, does not report them.
 - TCGA only: one consortium, bulk RNA-seq, mostly primary tumours from North American centres. Performance on other platforms, formalin-fixed samples or other populations is unknown.
 - Rare classes (fewer than 100 training tumours) are less accurate and less well calibrated.
 - Cancers of the same organ (colon vs rectum, oesophagus vs stomach) are not reliably separated; this reflects biology as much as the model.

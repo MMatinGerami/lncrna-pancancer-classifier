@@ -192,6 +192,20 @@ seen, and it is the same for both gene sets.
 
 <p align="center"><img src="results/figures/fig11_site_holdout.png" width="55%"></p>
 
+**External validation on MET500** (`scripts/12_met500.py`). MET500 (Robinson et al., 2017)
+holds RNA-seq of 437 patients' metastatic biopsies with the primary site recorded, from
+another institution, with capture and poly-A libraries and FPKM quantification. Its public
+matrix contains none of the 14,043 lncRNAs in this project's universe, so the lncRNA model
+cannot be tested on it: given no informative input, its conformal sets are all empty, which
+is the intended behaviour, and its top-1 accuracy is at chance. The protein-coding model,
+with 18,196 of its 18,907 genes present, recovers the primary site of 66% of patients
+(95% CI 61 to 71%) and places it in the top three for 82%, against 93% and 99.6% on the
+TCGA test split. Poly-A and capture libraries score alike (67% and 63%). Two lessons: a
+lncRNA classifier is only usable where the quantification pipeline reports lncRNAs, and an
+independent metastatic cohort costs the coding model about a quarter of its accuracy.
+
+![met500](results/figures/fig12_met500.png)
+
 ## Reproduce
 
 Requires [uv](https://docs.astral.sh/uv/) and ~3 GB of disk. On macOS, XGBoost needs
@@ -200,13 +214,32 @@ Requires [uv](https://docs.astral.sh/uv/) and ~3 GB of disk. On macOS, XGBoost n
 ```bash
 uv sync
 make data       # download TCGA (UCSC Xena) + GENCODE v23          (~750 MB)
-make all        # prepare, benchmark, budget, interpret, external, figures, ablation, conformal, subgroups, curve, sites
+make all        # prepare, benchmark, budget, interpret, external, figures, ablation, conformal, subgroups, curve, sites, met500
 make test       # unit tests
 ```
 
 Every step reads `configs/default.yaml`; changing the seed, split, feature budget or
 hyperparameter grids needs no code changes. On an Apple M-series laptop the full pipeline runs
 in about 45 minutes, most of it XGBoost tuning.
+
+### Predict new samples
+
+`scripts/08_conformal.py` saves the refit model and its calibration thresholds; `lncpan predict`
+applies them to a samples x genes table of log2(TPM + 1) lncRNA expression (Ensembl IDs):
+
+```bash
+uv run lncpan predict new_samples.parquet --alpha 0.1            # one global threshold
+uv run lncpan predict new_samples.parquet --alpha 0.1 --class-conditional
+```
+
+Each row gets the predicted cancer type, its probability and the conformal set; an empty set
+means the model abstains.
+
+### Docker
+
+```bash
+make docker      # builds the image and runs the tests inside it; data/ and results/ are mounted
+```
 
 ## Repository layout
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0 (2026-09-29)
+
+- External validation on the MET500 metastatic cohort (`scripts/12_met500.py`): protein-coding model 0.66 top-1 / 0.82 top-3; the public matrix has no lncRNAs, so the lncRNA model abstains.
+- `lncpan predict` command: probabilities and conformal sets for new samples from the saved model and thresholds.
+- Dockerfile, `make docker`, pre-commit configuration.
+
 ## 0.3.0 (2026-09-28)
 
 - Held-out hospital site cross-validation (`scripts/11_site_holdout.py`): about four points of macro-F1 are lost when every tissue source site is unseen in training.
