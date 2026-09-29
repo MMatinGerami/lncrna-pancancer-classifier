@@ -26,7 +26,10 @@ tissue of origin of metastases from patients they have never seen.
 | **lncRNA vs protein-coding** | lncRNA models are at least as accurate as protein-coding models for all three classifiers (Δ macro-F1 +0.010 to +0.017; paired bootstrap p = 0.09, 0.27, 0.02) |
 | **Feature budget** | **500 lncRNAs** reach CV macro-F1 0.946 vs 0.924 for 500 protein-coding genes; lncRNAs carry more tissue signal per gene at small budgets |
 | **Metastases (external)** | Models trained only on primaries (82 melanomas) assign **93%** of 364 melanoma metastases from unseen patients to skin (top-3: 97%) |
-| **Calibration** | Logistic regression and XGBoost are well calibrated (ECE ≈ 0.01) |
+| **Unseen hospitals** | Cross-validation with every tissue source site held out: macro-F1 0.938 → **0.895**; the same four-point cost for protein-coding genes |
+| **External cohort (MET500)** | 437 metastatic biopsies from another centre and pipeline: protein-coding model **66%** top-1 (95% CI 61–71), 82% top-3. The public matrix has no lncRNAs, so the lncRNA model abstains. Liver biopsies are often called the host organ's cancer (37%) |
+| **Calibration** | Well calibrated on the TCGA test split (ECE ≈ 0.01) but **over-confident on MET500** (ECE 0.126); temperature scaling fitted on TCGA only reaches 0.103 |
+| **Prediction sets** | Conformal sets at 90%: one global LAC threshold covers 90% of test tumours but only **76%** of external metastases; the randomised adaptive score covers **94%** with sets of 1.8 cancer types on average |
 | **Biology** | SHAP recovers known tissue-restricted lncRNAs, e.g. *LINC00518* for melanoma, a gene in a clinical non-invasive melanoma assay ([Gerami et al., 2014](https://doi.org/10.1016/j.jaad.2014.04.042)), and *PTCSC3* and *NKX2-1-AS1* for thyroid ([Jendrzejewski et al., 2012](https://doi.org/10.1073/pnas.1205654109)) |
 
 <p align="center"><img src="results/figures/fig1_tsne_lncrna.png" width="70%"></p>
