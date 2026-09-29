@@ -9,6 +9,7 @@ from lncpan.conformal import (
     prediction_sets,
     quantile,
     summarize,
+    tune_raps,
 )
 
 
@@ -76,3 +77,31 @@ def test_class_with_no_calibration_samples_is_always_included():
     assert q[1] == float("inf")
     sets = prediction_sets(np.array([[0.9, 0.1]]), q, "lac")
     assert sets[0, 1]
+
+
+def test_raps_with_zero_penalty_is_aps():
+    p, _ = _softmax_data(n=50)
+    assert np.allclose(nonconformity_all(p, "raps", k_reg=2, lam=0.0), nonconformity_all(p, "aps"))
+
+
+def test_raps_penalises_only_classes_ranked_below_k_reg():
+    p = np.array([[0.5, 0.3, 0.15, 0.05]])
+    aps = nonconformity_all(p, "aps")[0]
+    raps = nonconformity_all(p, "raps", k_reg=2, lam=0.1)[0]
+    assert raps[0] == pytest.approx(aps[0])
+    assert raps[1] == pytest.approx(aps[1])
+    assert raps[2] == pytest.approx(aps[2] + 0.1)
+    assert raps[3] == pytest.approx(aps[3] + 0.2)
+
+
+def test_raps_sets_are_no_larger_than_aps_sets_on_a_long_tail():
+    p, y = _softmax_data(n=6000, k=30, seed=3)
+    tune, cal, test = slice(0, 1000), slice(1000, 3000), slice(3000, None)
+    k_reg, lam = tune_raps(p[tune], y[tune], alpha=0.1)
+    assert lam > 0
+    q_aps = quantile(nonconformity(p[cal], y[cal], "aps"), 0.1)
+    q_raps = quantile(nonconformity(p[cal], y[cal], "raps", k_reg, lam), 0.1)
+    aps = summarize(prediction_sets(p[test], q_aps, "aps"), y[test])
+    raps = summarize(prediction_sets(p[test], q_raps, "raps", k_reg, lam), y[test])
+    assert raps["coverage"] >= 0.88
+    assert raps["mean_size"] <= aps["mean_size"]

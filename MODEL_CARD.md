@@ -62,8 +62,10 @@ Split conformal prediction (`scripts/08_conformal.py`, 15% of the training split
 | LAC, α = 0.10, one global threshold | 0.896 | 0.761 | 0.9 | 9.3% |
 | LAC, α = 0.10, one threshold per class | 0.918 | 0.945 | 4.9 | 0% |
 | LAC, α = 0.05, one global threshold | 0.952 | 0.901 | 1.0 | 2.3% |
+| APS, α = 0.10, one global threshold | 0.895 | 1.000 | 14.1 | 10.5% |
+| RAPS (k = 1, λ = 0.5), α = 0.10, one global threshold | 0.902 | 0.926 | 0.9 | 6.2% |
 
-An empty set is an abstention; among non-empty sets at α = 0.10, 98.8% contain the true class. The global threshold loses its guarantee on the metastases (a distribution shift), while per-class thresholds keep it at the cost of larger sets.
+An empty set is an abstention; among non-empty LAC sets at α = 0.10, 98.8% contain the true class. RAPS constants are tuned on 30% of the calibration set and the score is calibrated on the remaining 785 tumours. The global threshold loses its guarantee on the metastases (a distribution shift), while per-class thresholds keep it at the cost of larger sets.
 
 ## Limitations
 

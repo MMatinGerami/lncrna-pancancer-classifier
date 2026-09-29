@@ -10,7 +10,9 @@ cancer types per tumour with a guaranteed error rate. Steps:
   4. build sets on the test split and on the external melanoma metastases.
 
 Two variants are compared: one global threshold (marginal coverage) and one threshold per
-class (class-conditional coverage), for the LAC and APS scores at alpha = 0.10 and 0.05.
+class (class-conditional coverage), for the LAC, APS and RAPS scores at alpha = 0.10 and
+0.05. The two RAPS constants are chosen on 30% of the calibration set, which is then left
+out of the calibration for that score, so its guarantee rests on the remaining 70%.
 
 Writes results/tables/conformal_{summary,per_class}.csv and figures/fig8_conformal.png.
 """
@@ -34,6 +36,7 @@ from lncpan.conformal import (
     prediction_sets,
     quantile,
     summarize,
+    tune_raps,
 )
 from lncpan.io import load_dataset
 from lncpan.models import build_model
@@ -43,6 +46,7 @@ SERIES = [UNIVERSE_COLORS["lncRNA"], UNIVERSE_COLORS["protein_coding"]]
 
 ALPHAS = (0.10, 0.05)
 CALIBRATION_FRACTION = 0.15
+RAPS_TUNING_FRACTION = 0.30
 UNIVERSE = "lncRNA"
 
 
@@ -67,20 +71,34 @@ def main() -> None:
     p_cal, p_te, p_ex = (model.predict_proba(X) for X in (X_tr.iloc[cal_idx], X_te, X_ex))
     y_cal = y_tr[cal_idx]
     n_classes = len(ds.classes)
+    tune_idx, keep_idx = next(
+        StratifiedShuffleSplit(1, test_size=1 - RAPS_TUNING_FRACTION, random_state=cfg.seed).split(
+            p_cal, y_cal
+        )
+    )
 
-    rows, per_class = [], []
+    rows, per_class, raps_constants = [], [], {}
     for score in SCORES:
-        s_cal = nonconformity(p_cal, y_cal, score)
         for alpha in ALPHAS:
+            if score == "raps":
+                k_reg, lam = tune_raps(p_cal[tune_idx], y_cal[tune_idx], alpha)
+                raps_constants[alpha] = {"k_reg": k_reg, "lam": lam}
+                kw = {"k_reg": k_reg, "lam": lam}
+                p_c, y_c = p_cal[keep_idx], y_cal[keep_idx]
+            else:
+                kw = {}
+                p_c, y_c = p_cal, y_cal
+            s_cal = nonconformity(p_c, y_c, score, **kw)
             thresholds = {
                 "marginal": quantile(s_cal, alpha),
-                "class_conditional": class_conditional_quantiles(s_cal, y_cal, alpha, n_classes),
+                "class_conditional": class_conditional_quantiles(s_cal, y_c, alpha, n_classes),
             }
             for variant, q in thresholds.items():
                 for split, p, y in (("test", p_te, y_te), ("external", p_ex, y_ex)):
-                    sets = prediction_sets(p, q, score)
+                    sets = prediction_sets(p, q, score, **kw)
                     rows.append(
                         {"score": score, "alpha": alpha, "variant": variant, "split": split}
+                        | ({"n_calibration": len(y_c)} | kw if score == "raps" else {})
                         | summarize(sets, y)
                     )
                     if split == "test":
@@ -110,6 +128,8 @@ def main() -> None:
     )
     summary = pd.DataFrame(rows)
     summary.to_csv(tables / "conformal_summary.csv", index=False)
+    for alpha, c in raps_constants.items():
+        print(f"RAPS at alpha={alpha}: k_reg={c['k_reg']}, lam={c['lam']}")
     per_class = pd.concat(per_class, ignore_index=True)
     per_class.to_csv(tables / "conformal_per_class.csv", index=False)
     print(summary.round(3).to_string(index=False))
@@ -119,7 +139,7 @@ def main() -> None:
 
 def plot(summary: pd.DataFrame, per_class: pd.DataFrame, figures) -> None:
     apply_style()
-    fig, axes = plt.subplots(1, 2, figsize=(11, 3.8), gridspec_kw={"width_ratios": [3, 2]})
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 3.8), gridspec_kw={"width_ratios": [3, 2, 2]})
 
     ax = axes[0]
     pc = per_class[(per_class.score == "lac") & (per_class.alpha == 0.10)]
@@ -169,6 +189,27 @@ def plot(summary: pd.DataFrame, per_class: pd.DataFrame, figures) -> None:
         0.905, ex["mean_size"].max(), "metastases (external)", fontsize=7, color=INK_2, va="bottom"
     )
     ax.legend(loc="upper left")
+
+    ax = axes[2]
+    s = summary[(summary.split == "test") & (summary.alpha == 0.10)]
+    scores = ["lac", "aps", "raps"]
+    x = np.arange(len(scores))
+    for variant, colour, dx in (
+        ("marginal", SERIES[0], -0.18),
+        ("class_conditional", SERIES[1], 0.18),
+    ):
+        d = s[s.variant == variant].set_index("score").loc[scores]
+        ax.bar(x + dx, d["mean_size"], width=0.36, color=colour, label=variant.replace("_", " "))
+        for xi, (size, cov) in enumerate(zip(d["mean_size"], d["coverage"], strict=True)):
+            ax.text(xi + dx, size + 0.3, f"{cov:.2f}", ha="center", fontsize=6.5, color=INK_2)
+    ax.set(
+        xticks=x,
+        xticklabels=[sc.upper() for sc in scores],
+        ylabel="Mean set size on test tumours",
+        title="Score comparison at α = 0.10 (coverage above bars)",
+        ylim=(0, 18),
+    )
+    ax.legend(loc="upper right")
     fig.savefig(figures / "fig8_conformal.png")
     plt.close(fig)
 

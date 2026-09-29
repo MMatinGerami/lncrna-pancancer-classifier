@@ -166,6 +166,11 @@ an abstention; 98.8% of the non-empty sets contain the true type. The same thres
 only 76% of the external melanoma metastases: a global guarantee does not survive a
 distribution shift. One threshold per class restores coverage (0.945 on the metastases) at
 the cost of sets of about five types, because rare classes have few calibration samples.
+The choice of score matters as much as the threshold: the adaptive score (APS) gives sets of
+14 types on average at the same guarantee, because it keeps adding low-probability classes,
+and its regularised form (RAPS, penalty chosen on 30% of the calibration set) brings this
+back to 0.94 types while covering 90% of the test tumours and 93% of the metastases with a
+single global threshold.
 
 ![conformal](results/figures/fig8_conformal.png)
 
