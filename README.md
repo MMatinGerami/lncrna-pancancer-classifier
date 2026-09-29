@@ -76,6 +76,16 @@ Performance saturates at ~500 lncRNAs. At every budget up to 500 genes, lncRNAs 
 same number of protein-coding genes, which suggests that a compact lncRNA panel could carry
 most of the tissue-of-origin signal.
 
+Choosing the genes for the task rather than by variance (`scripts/16_sparse_panel.py`: L1
+selection, then an L2 refit on the selected genes so that the score is not inflated by the
+shrinkage that chose them) does not produce a panel of a few dozen. 70 genes give macro-F1
+0.85 on the test split and 67% on the metastases; 154 give 0.91 and 82%; the first panel
+within two points of the full model has 376 genes (0.93, 92% on the metastases). A targeted
+assay would therefore need a few hundred lncRNAs, not tens. The 376-gene panel is in
+`results/tables/sparse_panel_genes.csv` with the cancer types each gene serves.
+
+<p align="center"><img src="results/figures/fig16_sparse_panel.png" width="55%"></p>
+
 ### Generalisation to metastases
 
 364 TCGA melanoma metastases (lymph node, skin and distant sites) from patients whose primary
@@ -165,7 +175,7 @@ Design decisions that matter for a trustworthy estimate:
 
 ## Uncertainty and robustness
 
-Three analyses added after the benchmark ask where the classifier should not be trusted.
+The analyses in this section ask where the classifier should not be trusted.
 Full numbers are in [`MODEL_CARD.md`](MODEL_CARD.md).
 
 **Prediction sets with a guarantee** (`scripts/08_conformal.py`). Split conformal prediction
@@ -253,7 +263,7 @@ Requires [uv](https://docs.astral.sh/uv/) and ~3 GB of disk. On macOS, XGBoost n
 ```bash
 uv sync
 make data       # download TCGA (UCSC Xena) + GENCODE v23          (~750 MB)
-make all        # prepare, benchmark, budget, interpret, external, figures, ablation, conformal, subgroups, curve, sites, met500, met500-calibration, markers, site-signal
+make all        # prepare, benchmark, budget, interpret, external, figures, ablation, conformal, subgroups, curve, sites, met500, met500-calibration, markers, site-signal, panel
 make test       # unit tests
 ```
 
@@ -291,8 +301,11 @@ src/lncpan/
   mlp.py                    PyTorch MLP as a scikit-learn classifier (MPS/CUDA/CPU)
   models.py                 model factory + hyperparameter grids
   evaluate.py               metrics, expected calibration error, bootstrap CIs
+  conformal.py              LAC, APS and RAPS prediction sets, marginal and per-class thresholds
+  calibration.py            temperature scaling, reliability curves
+  cli.py                    `lncpan predict`
   isolation.py              per-model process isolation (see note below)
-scripts/01…07_*.py          pipeline steps and the ablation (wired into the Makefile)
+scripts/01…16_*.py          pipeline steps and the analyses above (wired into the Makefile)
 tests/                      pytest suite, run in CI
 results/tables, figures     all numbers and figures shown in this README
 ```
@@ -303,10 +316,13 @@ and each is trained in its own spawned process (`lncpan/isolation.py`).
 
 ## What I would do next
 
-1. **Independent validation**, ideally on a CUP cohort or on GEO metastasis series profiled
-   outside TCGA, to see how much of the performance survives a change of platform and centre.
-2. **A small panel.** The budget curve saturates at ~500 lncRNAs; a sparse (L1) model could
-   find a panel of a few dozen that would be cheap to measure by targeted RNA-seq or qPCR.
+1. **Validation on true cancers of unknown primary.** MET500 tests a change of centre and
+   platform on metastases with a known primary; a CUP series with a later-confirmed origin,
+   quantified with a pipeline that reports lncRNAs, is the test that matters.
+2. **A panel with the biopsy organ in mind.** The sparse-panel experiment shows a few
+   hundred lncRNAs are needed; the next question is whether a panel trained with metastatic
+   samples and their biopsy site as a covariate stops reading the host organ (MET500 liver
+   result above).
 3. **Single-cell resolution.** Checking the top markers in scRNA-seq atlases would separate
    tumour-intrinsic lncRNAs from those that report the surrounding normal tissue.
 
