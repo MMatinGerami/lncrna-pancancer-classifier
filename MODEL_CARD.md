@@ -47,7 +47,11 @@ The clear weakness is rare cancer types: accuracy drops by about nine points and
 
 ## Unseen sites
 
-Five-fold cross-validation of the training split with every tissue source site confined to one fold (StratifiedGroupKFold) gives macro-F1 0.895 ± 0.013 for the lncRNA model, against 0.938 ± 0.011 with random stratified folds (protein-coding: 0.894 vs 0.937). Performance reported on the random test split therefore overstates what to expect at a new centre by about four points.
+Five-fold cross-validation of the training split with every tissue source site confined to one fold (StratifiedGroupKFold) gives macro-F1 0.895 ± 0.013 for the lncRNA model, against 0.938 ± 0.011 with random stratified folds (protein-coding: 0.894 vs 0.937). Performance reported on the random test split therefore overstates what to expect at a new centre by about four points. Within a cancer type, the source site can be predicted from expression with balanced accuracy 0.42 (lncRNA) and 0.37 (protein-coding) against 0.18 by chance (`scripts/15_site_signal.py`).
+
+## Marker stability
+
+Over 30 bootstrap refits of the logistic regression, the ten largest coefficients per cancer type overlap with the full-data list at Jaccard 0.54 on average (0.34 to 0.82); 111 of 330 markers are recovered in at least 90% of resamples and 122 are also SHAP top-10 markers of the XGBoost model (`scripts/14_marker_stability.py`).
 
 ## External validation (MET500, Robinson et al. 2017)
 

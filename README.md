@@ -102,6 +102,16 @@ Many of the top markers are antisense transcripts of lineage transcription facto
 (*HAND2-AS1*, *NKX2-1-AS1*, *EMX2OS*, *DLX6-AS1*), which fits the view of lncRNAs as
 cell-identity genes.
 
+How much of a marker list survives a change of training sample? Refitting the logistic
+regression on 30 bootstrap resamples of the training split (`scripts/14_marker_stability.py`)
+and comparing each resample's ten largest coefficients per cancer type with the full-data
+list gives a Jaccard overlap of 0.34 (COAD) to 0.82 (THCA), 0.54 on average. 111 of the 330
+full-data markers are recovered in at least 90% of resamples, and 122 are also in the SHAP
+top ten of the XGBoost model. The stable, model-independent markers are the ones worth
+reading biology into; the rest are interchangeable members of correlated groups.
+
+<p align="center"><img src="results/figures/fig14_marker_stability.png" width="85%"></p>
+
 
 ### Does removing chrX/chrY genes matter? (ablation)
 
@@ -197,6 +207,15 @@ seen, and it is the same for both gene sets.
 
 <p align="center"><img src="results/figures/fig11_site_holdout.png" width="55%"></p>
 
+The site signal itself can be measured (`scripts/15_site_signal.py`): within a cancer type,
+predicting which hospital a tumour came from, for the 18 types with at least three sites of
+15 or more tumours, gives a balanced accuracy of 0.42 for lncRNAs and 0.37 for protein-coding
+genes against 0.18 by chance. Both gene sets carry a hospital signature, and lncRNAs carry
+slightly more of it, so the equal cost of unseen sites above is not because lncRNAs are free
+of batch effects.
+
+<p align="center"><img src="results/figures/fig15_site_signal.png" width="75%"></p>
+
 **External validation on MET500** (`scripts/12_met500.py`). MET500 (Robinson et al., 2017)
 holds RNA-seq of 437 patients' metastatic biopsies with the primary site recorded, from
 another institution, with capture and poly-A libraries and FPKM quantification. Its public
@@ -234,7 +253,7 @@ Requires [uv](https://docs.astral.sh/uv/) and ~3 GB of disk. On macOS, XGBoost n
 ```bash
 uv sync
 make data       # download TCGA (UCSC Xena) + GENCODE v23          (~750 MB)
-make all        # prepare, benchmark, budget, interpret, external, figures, ablation, conformal, subgroups, curve, sites, met500, met500-calibration
+make all        # prepare, benchmark, budget, interpret, external, figures, ablation, conformal, subgroups, curve, sites, met500, met500-calibration, markers, site-signal
 make test       # unit tests
 ```
 
@@ -303,7 +322,8 @@ and each is trained in its own spawned process (`lncpan/isolation.py`).
 - **Short-read annotation.** GENCODE v23 lncRNA models are incomplete; unannotated or
   low-coverage lncRNAs are not captured by gene-level TPM.
 - **Attribution is not mechanism.** SHAP ranks genes that the model uses; correlated genes share
-  credit, and a high SHAP value does not imply a functional role.
+  credit, and a high SHAP value does not imply a functional role. About a third of the top-10
+  markers change between bootstrap refits.
 
 ## Data and references
 
