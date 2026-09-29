@@ -8,4 +8,5 @@ authors:
     email: mmatin.gerami@gmail.com
 repository-code: "https://github.com/MMatinGerami/lncrna-pancancer-classifier"
 license: MIT
-date-released: 2026-09-24
+version: 0.5.0
+date-released: 2026-09-29

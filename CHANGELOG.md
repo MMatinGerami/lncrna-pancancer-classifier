@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 (2026-09-29)
 
 - Sparse lncRNA panel by L1 selection and L2 refit (`scripts/16_sparse_panel.py`): a few hundred genes are needed, not a few dozen; the 376-gene panel is listed.
 - Bootstrap stability of the marker lncRNAs (`scripts/14_marker_stability.py`) and a direct measurement of the hospital-site signal within cancer types (`scripts/15_site_signal.py`).
