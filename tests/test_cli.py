@@ -16,6 +16,9 @@ def toy_model():
     thresholds = {
         "classes": ["A", "B"],
         "lac": {"0.1": {"marginal": 0.5, "class_conditional": [0.5, 0.5]}},
+        "raps": {
+            "0.1": {"k_reg": 1, "lam": 0.5, "marginal": 0.95, "class_conditional": [0.95, 0.95]}
+        },
     }
     return model, thresholds, X
 
@@ -42,3 +45,12 @@ def test_predict_frame_rejects_uncalibrated_alpha(toy_model):
     model, thresholds, X = toy_model
     with pytest.raises(SystemExit):
         predict_frame(X.head(2), model, thresholds, alpha=0.3, class_conditional=False)
+
+
+def test_predict_frame_with_raps_score(toy_model):
+    model, thresholds, X = toy_model
+    out = predict_frame(X.head(10), model, thresholds, 0.1, False, score="raps")
+    # threshold 0.95 with a 0.5 penalty on the second class: only the top class can enter
+    assert (out["set_size"] == 1).all()
+    with pytest.raises(SystemExit):
+        predict_frame(X.head(2), model, thresholds, 0.1, False, score="aps")

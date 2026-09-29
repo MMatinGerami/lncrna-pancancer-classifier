@@ -12,7 +12,9 @@ cancer types per tumour with a guaranteed error rate. Steps:
 Two variants are compared: one global threshold (marginal coverage) and one threshold per
 class (class-conditional coverage), for the LAC, APS and RAPS scores at alpha = 0.10 and
 0.05. The two RAPS constants are chosen on 30% of the calibration set, which is then left
-out of the calibration for that score, so its guarantee rests on the remaining 70%.
+out of the calibration for that score, so its guarantee rests on the remaining 70%. APS and
+RAPS use the randomised score (one uniform draw per tumour, fixed seed); the deterministic
+form gives an empty set to exactly the tumours the model is most certain about.
 
 Writes results/tables/conformal_{summary,per_class}.csv and figures/fig8_conformal.png.
 """
@@ -37,6 +39,7 @@ from lncpan.conformal import (
     quantile,
     summarize,
     tune_raps,
+    uniform_draws,
 )
 from lncpan.io import load_dataset
 from lncpan.models import build_model
@@ -77,25 +80,29 @@ def main() -> None:
         )
     )
 
+    u_cal, u_te, u_ex = (
+        uniform_draws(len(y), cfg.seed + i) for i, y in enumerate((y_cal, y_te, y_ex))
+    )
+
     rows, per_class, raps_constants = [], [], {}
     for score in SCORES:
         for alpha in ALPHAS:
             if score == "raps":
-                k_reg, lam = tune_raps(p_cal[tune_idx], y_cal[tune_idx], alpha)
+                k_reg, lam = tune_raps(p_cal[tune_idx], y_cal[tune_idx], alpha, u=u_cal[tune_idx])
                 raps_constants[alpha] = {"k_reg": k_reg, "lam": lam}
                 kw = {"k_reg": k_reg, "lam": lam}
-                p_c, y_c = p_cal[keep_idx], y_cal[keep_idx]
+                p_c, y_c, u_c = p_cal[keep_idx], y_cal[keep_idx], u_cal[keep_idx]
             else:
                 kw = {}
-                p_c, y_c = p_cal, y_cal
-            s_cal = nonconformity(p_c, y_c, score, **kw)
+                p_c, y_c, u_c = p_cal, y_cal, u_cal
+            s_cal = nonconformity(p_c, y_c, score, u=u_c, **kw)
             thresholds = {
                 "marginal": quantile(s_cal, alpha),
                 "class_conditional": class_conditional_quantiles(s_cal, y_c, alpha, n_classes),
             }
             for variant, q in thresholds.items():
-                for split, p, y in (("test", p_te, y_te), ("external", p_ex, y_ex)):
-                    sets = prediction_sets(p, q, score, **kw)
+                for split, p, y, u in (("test", p_te, y_te, u_te), ("external", p_ex, y_ex, u_ex)):
+                    sets = prediction_sets(p, q, score, u=u, **kw)
                     rows.append(
                         {"score": score, "alpha": alpha, "variant": variant, "split": split}
                         | ({"n_calibration": len(y_c)} | kw if score == "raps" else {})
@@ -121,6 +128,23 @@ def main() -> None:
                 ).tolist(),
             }
             for a in ALPHAS
+        },
+        "raps": {
+            str(a): {
+                "k_reg": c["k_reg"],
+                "lam": c["lam"],
+                "marginal": quantile(
+                    nonconformity(p_cal[keep_idx], y_cal[keep_idx], "raps", u=u_cal[keep_idx], **c),
+                    a,
+                ),
+                "class_conditional": class_conditional_quantiles(
+                    nonconformity(p_cal[keep_idx], y_cal[keep_idx], "raps", u=u_cal[keep_idx], **c),
+                    y_cal[keep_idx],
+                    a,
+                    n_classes,
+                ).tolist(),
+            }
+            for a, c in raps_constants.items()
         },
     }
     (res / "models" / f"{UNIVERSE}__conformal_thresholds.json").write_text(

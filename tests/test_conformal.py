@@ -10,6 +10,7 @@ from lncpan.conformal import (
     quantile,
     summarize,
     tune_raps,
+    uniform_draws,
 )
 
 
@@ -105,3 +106,25 @@ def test_raps_sets_are_no_larger_than_aps_sets_on_a_long_tail():
     raps = summarize(prediction_sets(p[test], q_raps, "raps", k_reg, lam), y[test])
     assert raps["coverage"] >= 0.88
     assert raps["mean_size"] <= aps["mean_size"]
+
+
+def test_deterministic_aps_scores_the_true_top_class_by_its_full_probability():
+    p = np.array([[0.98, 0.01, 0.01]])
+    assert nonconformity(p, np.array([0]), "aps") == pytest.approx(0.98)
+    u = np.array([0.5])
+    assert nonconformity(p, np.array([0]), "aps", u=u) == pytest.approx(0.49)
+    assert nonconformity(p, np.array([1]), "aps", u=u) == pytest.approx(0.98 + 0.005)
+
+
+def test_randomised_aps_does_not_abstain_on_confident_predictions():
+    p, y = _softmax_data(n=6000, k=10, seed=5)
+    p = p**4 / (p**4).sum(1, keepdims=True)  # sharpen: many near-certain predictions
+    half = len(y) // 2
+    u_cal, u_te = uniform_draws(half, 0), uniform_draws(len(y) - half, 1)
+    q_det = quantile(nonconformity(p[:half], y[:half], "aps"), 0.1)
+    q_rnd = quantile(nonconformity(p[:half], y[:half], "aps", u=u_cal), 0.1)
+    det = summarize(prediction_sets(p[half:], q_det, "aps"), y[half:])
+    rnd = summarize(prediction_sets(p[half:], q_rnd, "aps", u=u_te), y[half:])
+    assert rnd["coverage"] >= 0.88
+    assert rnd["empty_frac"] < 0.01
+    assert rnd["empty_frac"] <= det["empty_frac"]

@@ -9,8 +9,11 @@ Two scores are implemented:
 
 - "lac": 1 - p(true class). Smallest sets on average, but coverage can be uneven across
   classes.
-- "aps": cumulative probability of the classes at least as likely as the true class
-  (adaptive prediction sets, without the randomised tie-break, so slightly conservative).
+- "aps": cumulative probability of the classes more likely than the true class, plus a
+  uniform random fraction `u` of the true class's own probability (adaptive prediction
+  sets). With `u` fixed at 1 the score is deterministic and conservative, but then a
+  confidently correct prediction (p ~ 1 on the true class) gets a score of ~1 and an empty
+  set, which is why the randomised form is the default in `scripts/08`.
 - "raps": APS plus a penalty `lam` for every class ranked below `k_reg` (regularised
   adaptive prediction sets, Angelopoulos et al., 2021). The penalty stops the long tail of
   small probabilities from inflating the sets; `tune_raps` picks the two constants on a
@@ -29,24 +32,41 @@ SCORES = ("lac", "aps", "raps")
 LAM_GRID = (0.001, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0)
 
 
+def uniform_draws(n: int, seed: int) -> np.ndarray:
+    """One U(0, 1) draw per sample for the randomised APS and RAPS scores."""
+    return np.random.default_rng(seed).uniform(size=n)
+
+
 def nonconformity(
-    proba: np.ndarray, y: np.ndarray, score: str, k_reg: int = 1, lam: float = 0.0
+    proba: np.ndarray,
+    y: np.ndarray,
+    score: str,
+    k_reg: int = 1,
+    lam: float = 0.0,
+    u: np.ndarray | None = None,
 ) -> np.ndarray:
     """One score per sample for its true class (higher = less conforming)."""
-    return nonconformity_all(proba, score, k_reg, lam)[np.arange(len(y)), y]
+    return nonconformity_all(proba, score, k_reg, lam, u)[np.arange(len(y)), y]
 
 
 def nonconformity_all(
-    proba: np.ndarray, score: str, k_reg: int = 1, lam: float = 0.0
+    proba: np.ndarray,
+    score: str,
+    k_reg: int = 1,
+    lam: float = 0.0,
+    u: np.ndarray | None = None,
 ) -> np.ndarray:
     """Score of every class for every sample, shape (n, K). `k_reg` and `lam` are the RAPS
-    constants and are ignored by the other scores."""
+    constants and `u` the per-sample uniform draws; both are ignored by the LAC score.
+    Without `u` the APS and RAPS scores are deterministic (u = 1)."""
     if score == "lac":
         return 1.0 - proba
     if score in ("aps", "raps"):
         order = np.argsort(-proba, axis=1)
         sorted_p = np.take_along_axis(proba, order, axis=1)
-        cum = np.cumsum(sorted_p, axis=1)
+        before = np.cumsum(sorted_p, axis=1) - sorted_p
+        frac = 1.0 if u is None else np.asarray(u)[:, None]
+        cum = before + frac * sorted_p
         if score == "raps":
             rank = np.arange(1, proba.shape[1] + 1)
             cum = cum + lam * np.clip(rank - k_reg, 0, None)
@@ -57,7 +77,11 @@ def nonconformity_all(
 
 
 def tune_raps(
-    proba: np.ndarray, y: np.ndarray, alpha: float, lam_grid: tuple[float, ...] = LAM_GRID
+    proba: np.ndarray,
+    y: np.ndarray,
+    alpha: float,
+    lam_grid: tuple[float, ...] = LAM_GRID,
+    u: np.ndarray | None = None,
 ) -> tuple[int, float]:
     """Choose the RAPS constants on a tuning split, following Angelopoulos et al. (2021):
     `k_reg` is the rank below which the true class falls with probability alpha, and `lam`
@@ -65,10 +89,11 @@ def tune_raps(
     ranks = (nonconformity_all(proba, "aps") <= nonconformity(proba, y, "aps")[:, None]).sum(1)
     k_reg = int(np.quantile(ranks, 1 - alpha, method="higher"))
     half = len(y) // 2
+    u_a, u_b = (None, None) if u is None else (u[:half], u[half:])
     best_lam, best_size = 0.0, np.inf
     for lam in lam_grid:
-        q = quantile(nonconformity(proba[:half], y[:half], "raps", k_reg, lam), alpha)
-        size = prediction_sets(proba[half:], q, "raps", k_reg, lam).sum(1).mean()
+        q = quantile(nonconformity(proba[:half], y[:half], "raps", k_reg, lam, u_a), alpha)
+        size = prediction_sets(proba[half:], q, "raps", k_reg, lam, u_b).sum(1).mean()
         if size < best_size:
             best_lam, best_size = lam, size
     return k_reg, best_lam
@@ -96,10 +121,15 @@ def class_conditional_quantiles(
 
 
 def prediction_sets(
-    proba: np.ndarray, q: float | np.ndarray, score: str, k_reg: int = 1, lam: float = 0.0
+    proba: np.ndarray,
+    q: float | np.ndarray,
+    score: str,
+    k_reg: int = 1,
+    lam: float = 0.0,
+    u: np.ndarray | None = None,
 ) -> np.ndarray:
     """Boolean (n, K) matrix: class k is in the set when its score is <= q (or <= q[k])."""
-    return nonconformity_all(proba, score, k_reg, lam) <= np.asarray(q)
+    return nonconformity_all(proba, score, k_reg, lam, u) <= np.asarray(q)
 
 
 def summarize(sets: np.ndarray, y: np.ndarray) -> dict[str, float]:

@@ -5,7 +5,7 @@
 - Sparse lncRNA panel by L1 selection and L2 refit (`scripts/16_sparse_panel.py`): a few hundred genes are needed, not a few dozen; the 376-gene panel is listed.
 - Bootstrap stability of the marker lncRNAs (`scripts/14_marker_stability.py`) and a direct measurement of the hospital-site signal within cancer types (`scripts/15_site_signal.py`).
 - Calibration under shift and results by biopsy site on MET500 (`lncpan.calibration`, `scripts/13_met500_calibration.py`): temperature scaling fitted on TCGA barely helps on MET500; liver and lung biopsies are often called the host organ's cancer.
-- Regularised adaptive prediction sets (RAPS) in `lncpan.conformal`, with the constants tuned on a split of the calibration set: mean set size 0.9 instead of 14.1 for APS at the same 90% guarantee, and 93% coverage of the external metastases with one global threshold.
+- Randomised APS and regularised adaptive prediction sets (RAPS) in `lncpan.conformal`, with the RAPS constants tuned on a split of the calibration set; `lncpan predict --score raps`. The deterministic APS score gave 14-type sets and empty sets to the most confident tumours; the randomised APS score covers 94% of the external metastases with one global threshold.
 
 ## 0.4.0 (2026-09-29)
 
