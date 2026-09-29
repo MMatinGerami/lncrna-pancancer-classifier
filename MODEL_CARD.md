@@ -53,6 +53,8 @@ Five-fold cross-validation of the training split with every tissue source site c
 
 437 patients with metastatic biopsies from another institution (poly-A and capture libraries, FPKM quantification). The public matrix contains no lncRNAs from this project's universe, so only the protein-coding model can be evaluated: top-1 accuracy 0.659 (95% CI 0.613 to 0.707), top-3 0.815, similar for poly-A (0.668) and capture (0.629) libraries. Given no informative input, the lncRNA model's conformal sets are all empty (abstention).
 
+On MET500 the protein-coding model is over-confident (ECE 0.126 against 0.012 on the TCGA test split); temperature scaling fitted on TCGA (T = 1.18) reduces it to 0.103. By biopsy site, top-1 accuracy is 0.78 for lymph node (n = 101), 0.78 soft tissue (81), 0.73 bone marrow (44), 0.54 lung (35) and 0.49 liver (123); 37% of liver biopsies are predicted as LIHC or CHOL, the host tissue (`scripts/13_met500_calibration.py`).
+
 ## Uncertainty
 
 Split conformal prediction (`scripts/08_conformal.py`, 15% of the training split held out for calibration):
@@ -70,6 +72,7 @@ An empty set is an abstention; among non-empty LAC sets at α = 0.10, 98.8% cont
 ## Limitations
 
 - The lncRNA model can only be used where lncRNAs are quantified; MET500, like many clinical pipelines, does not report them.
+- Metastases sampled in the liver or lung are often classified as the host organ's cancer; the model cannot separate the primary's signal from the surrounding tissue.
 - TCGA only: one consortium, bulk RNA-seq, mostly primary tumours from North American centres. Performance on other platforms, formalin-fixed samples or other populations is unknown.
 - Rare classes (fewer than 100 training tumours) are less accurate and less well calibrated.
 - Cancers of the same organ (colon vs rectum, oesophagus vs stomach) are not reliably separated; this reflects biology as much as the model.

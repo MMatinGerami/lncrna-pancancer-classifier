@@ -211,6 +211,21 @@ independent metastatic cohort costs the coding model about a quarter of its accu
 
 ![met500](results/figures/fig12_met500.png)
 
+**Calibration and biopsy site on MET500** (`scripts/13_met500_calibration.py`). On the TCGA
+test split the protein-coding model is well calibrated (expected calibration error 0.012);
+on MET500 it is over-confident (mean confidence 0.79 against 0.66 accuracy, ECE 0.126).
+Temperature scaling fitted on held-out TCGA tumours, the standard remedy, finds a
+temperature of 1.18 and lowers the MET500 error only to 0.103: a calibration set from the
+source distribution cannot anticipate a shift. Splitting MET500 by where the metastasis was
+sampled explains much of the loss. Lymph node, soft tissue and bone marrow biopsies are
+classified correctly for 73 to 78% of patients, but liver biopsies only for 49%, and 37% of
+them are called liver or bile duct cancer, which is the host tissue rather than the primary.
+Lung biopsies show the same pattern (54% correct, 34% called lung cancer). A metastasis
+carries the expression of the organ it grows in, and the classifier has no way to tell the
+two apart.
+
+![met500 calibration](results/figures/fig13_met500_calibration.png)
+
 ## Reproduce
 
 Requires [uv](https://docs.astral.sh/uv/) and ~3 GB of disk. On macOS, XGBoost needs
@@ -219,7 +234,7 @@ Requires [uv](https://docs.astral.sh/uv/) and ~3 GB of disk. On macOS, XGBoost n
 ```bash
 uv sync
 make data       # download TCGA (UCSC Xena) + GENCODE v23          (~750 MB)
-make all        # prepare, benchmark, budget, interpret, external, figures, ablation, conformal, subgroups, curve, sites, met500
+make all        # prepare, benchmark, budget, interpret, external, figures, ablation, conformal, subgroups, curve, sites, met500, met500-calibration
 make test       # unit tests
 ```
 
