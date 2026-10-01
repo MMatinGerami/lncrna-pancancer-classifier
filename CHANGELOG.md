@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Immune and stromal admixture (`scripts/17_microenvironment.py`, `make microenv`): test-set errors are not enriched in stroma- or immune-rich tumours and confidence barely depends on either; 17 of 330 top markers track the micro-environment within their type, and one thymoma marker (*TRBV11-2*) is a T-cell receptor segment typed lincRNA in GENCODE v23.
+
 ## 0.5.0 (2026-09-29)
 
 - Sparse lncRNA panel by L1 selection and L2 refit (`scripts/16_sparse_panel.py`): a few hundred genes are needed, not a few dozen; the 376-gene panel is listed.

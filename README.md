@@ -261,6 +261,35 @@ two apart.
 
 ![met500 calibration](results/figures/fig13_met500_calibration.png)
 
+**Tumour or neighbourhood? Immune and stromal admixture** (`scripts/17_microenvironment.py`).
+Bulk tissue mixes tumour cells with stroma and immune cells, so a tissue-of-origin model could
+be reading the neighbourhood rather than the tumour. Each tumour gets an immune and a stromal
+score, the mean z-score of eight canonical leukocyte genes (PTPRC, CD2, CD3E, CD53, LAPTM5,
+CORO1A, CD68, CD14) and eight fibroblast and matrix genes (COL1A1, COL1A2, COL3A1, COL5A1, DCN,
+LUM, FAP, PDGFRB), a transparent stand-in for ESTIMATE
+([Yoshihara et al., 2013](https://doi.org/10.1038/ncomms3612)), standardised within cancer type
+because stroma is part of what distinguishes the types.
+
+| | Immune score | Stromal score |
+|---|---|---|
+| Misclassified minus correct, median (95% CI), 63 vs 1,805 test tumours | −0.13 (−0.57 to 0.16), p = 0.18 | −0.16 (−0.37 to 0.21), p = 0.61 |
+| Error rate in the low / middle / high tertile | 4.3% / 2.9% / 2.9% | 3.2% / 3.9% / 3.1% |
+| Spearman correlation with the model's confidence, 1,868 tumours | −0.06 | −0.05 |
+
+The classifier's mistakes are not tumours swamped by stroma or immune cells, and its confidence
+barely moves with either (the correlations are detectable only because n is large). The
+markers tell a more mixed story: 17 of the 330 top-10 SHAP markers (5%) correlate at
+|ρ| ≥ 0.5 with the immune or stromal score inside their own cancer type
+(`results/tables/microenvironment_markers.csv`). Examples are *HAND2-AS1* for pancreatic and
+stomach cancer (stromal ρ 0.53 and 0.61) and two breast-cancer markers that track stroma at
+ρ ≈ 0.8, so part of what the model uses for those types is the tissue around the tumour. One
+thymoma marker, *TRBV11-2*, is named as a T-cell receptor β variable segment but is typed
+`lincRNA` in GENCODE v23; it is the only such gene in the 14,043-gene universe, and its
+correlation with the immune score (ρ 0.78) says it reports the lymphocytes of thymoma, not
+lncRNA biology. These are correlations within each type, with a marker-gene proxy rather than
+a purity estimate from DNA, so they flag candidates for the single-cell check in "What I would
+do next" rather than settle the question.
+
 ## Reproduce
 
 Requires [uv](https://docs.astral.sh/uv/) and ~3 GB of disk. On macOS, XGBoost needs

@@ -1,0 +1,3 @@
+score,n_errors,n_correct,median_errors,median_correct,difference,ci_low,ci_high,mannwhitney_p
+immune,63,1805,-0.111403696,0.015674237,-0.12707794,-0.5717296,0.16322716,0.17567958
+stromal,63,1805,-0.14171678,0.018359436,-0.16007622,-0.37243596,0.20868951,0.6112694
