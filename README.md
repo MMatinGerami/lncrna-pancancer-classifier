@@ -171,8 +171,12 @@ Design decisions that matter for a trustworthy estimate:
   `Pipeline`, so within cross-validation it only ever sees the training folds.
 - **No sex shortcut.** Genes on chrX/chrY are removed, so models cannot identify ovarian,
   uterine, prostate or testicular tumours from patient sex (XIST is itself a lncRNA).
-- **The test set is used once**, after all tuning, and every test metric carries a
-  bootstrap 95% confidence interval.
+- **The test set is not used for tuning** the models: hyperparameters are chosen on the
+  training split, and every test metric carries a bootstrap 95% confidence interval. One
+  exception: the size of the sparse panel (`scripts/16_sparse_panel.py`) is read off test
+  macro-F1, so that panel's test score is optimistic.
+  The robustness analyses (learning curve, ablation, admixture, subgroups) score the same
+  test set again, so their results are descriptive, not independent confirmations.
 - **Calibration is reported**, not just accuracy: a tissue-of-origin call is only useful
   clinically if its confidence can be trusted.
 
