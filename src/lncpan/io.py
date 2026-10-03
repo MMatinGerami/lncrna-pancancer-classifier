@@ -18,8 +18,12 @@ class Dataset:
 
     def split(self, name: str) -> tuple[pd.DataFrame, np.ndarray]:
         m = (self.samples["split"] == name).to_numpy()
-        y = np.searchsorted(self.classes, self.samples.loc[m, "cancer_type"].to_numpy())
-        return self.X.loc[m], y
+        labels = self.samples.loc[m, "cancer_type"].to_numpy()
+        # searchsorted gives a position even for a label not in `classes`; that would be a
+        # silent wrong class, so unknown labels are an error
+        if unknown := sorted(set(labels) - set(self.classes)):
+            raise ValueError(f"{name}: labels not among the training classes: {unknown}")
+        return self.X.loc[m], np.searchsorted(self.classes, labels)
 
 
 def load_dataset(cfg: Config, universe: str) -> Dataset:
