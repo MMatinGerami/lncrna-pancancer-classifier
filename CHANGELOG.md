@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix: AJCC stage parsing dropped every sub-staged tumour ("Stage IIIA" and so on), leaving 528 of 1,868 test tumours with a stage instead of 1,226. Subgroup table, figure and model card regenerated; stage III remains the hardest (0.931), stage IV is 0.949, not 0.925. `parse_stage` is now tested.
+- README: MET500 comparison now quotes the coding model's own test accuracy (96%, top-3 99.5%), so the external cohort costs about a third of its accuracy, not a quarter.
 - Immune and stromal admixture (`scripts/17_microenvironment.py`, `make microenv`): test-set errors are not enriched in stroma- or immune-rich tumours and confidence barely depends on either; 17 of 330 top markers track the micro-environment within their type, and one thymoma marker (*TRBV11-2*) is a T-cell receptor segment typed lincRNA in GENCODE v23.
 
 ## 0.5.0 (2026-09-29)

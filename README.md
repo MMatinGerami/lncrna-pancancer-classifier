@@ -201,7 +201,8 @@ uses these thresholds.
 ![conformal](results/figures/fig8_conformal.png)
 
 **Subgroups** (`scripts/09_subgroups.py`). Accuracy is the same for women and men and across
-age groups. It is lower for stage III and IV tumours (0.935 and 0.925, wide intervals) and
+age groups. It is lower for stage III and IV tumours (0.931 and 0.949, against 0.969 and 0.970
+for stages I and II; intervals overlap) and
 clearly lower for cancer types with fewer than 100 training tumours: 0.887 against 0.975 for
 types with 300 or more, with an expected calibration error of 0.073 against 0.009. Rare
 classes are where the model is both less accurate and over-confident.
@@ -236,13 +237,13 @@ of batch effects.
 holds RNA-seq of 437 patients' metastatic biopsies with the primary site recorded, from
 another institution, with capture and poly-A libraries and FPKM quantification. Its public
 matrix contains none of the 14,043 lncRNAs in this project's universe, so the lncRNA model
-cannot be tested on it: given no informative input, its conformal sets are all empty, which
-is the intended behaviour, and its top-1 accuracy is at chance. The protein-coding model,
+cannot be tested on it: with every lncRNA missing its input carries no information, its
+conformal sets are all empty and its top-1 accuracy is at chance. The protein-coding model,
 with 18,196 of its 18,907 genes present, recovers the primary site of 66% of patients
-(95% CI 61 to 71%) and places it in the top three for 82%, against 93% and 99.6% on the
+(95% CI 61 to 71%) and places it in the top three for 82%, against 96% and 99.5% on the
 TCGA test split. Poly-A and capture libraries score alike (67% and 63%). Two lessons: a
 lncRNA classifier is only usable where the quantification pipeline reports lncRNAs, and an
-independent metastatic cohort costs the coding model about a quarter of its accuracy.
+independent metastatic cohort costs the coding model about a third of its accuracy.
 
 ![met500](results/figures/fig12_met500.png)
 

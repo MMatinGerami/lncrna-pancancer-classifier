@@ -45,9 +45,14 @@ def read_clinical(path) -> pd.DataFrame:
     clin["age_group"] = pd.cut(
         clin["age_at_initial_pathologic_diagnosis"], AGE_BINS, labels=AGE_LABELS, right=False
     ).astype(object)
-    stage = clin["ajcc_pathologic_tumor_stage"].astype(str).str.extract(r"Stage (IV|III|II|I)\b")[0]
+    stage = parse_stage(clin["ajcc_pathologic_tumor_stage"])
     clin["stage"] = stage.fillna("Not reported")
     return clin[["sex", "age_group", "stage"]]
+
+
+def parse_stage(raw: pd.Series) -> pd.Series:
+    """'Stage IIIA' -> 'III'; sub-stages collapse to their main stage, anything else is NaN."""
+    return raw.astype(str).str.extract(r"^Stage (IV|III|II|I)[ABC]?\d?$")[0]
 
 
 def group_metrics(y: np.ndarray, proba: np.ndarray, n_classes: int, seed: int) -> dict[str, float]:

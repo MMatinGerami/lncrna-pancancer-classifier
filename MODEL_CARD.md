@@ -35,15 +35,15 @@ Research prototype. Not a medical device and not validated for clinical use.
 | Age under 50 | 480 | 0.985 (0.973 to 0.996) | 0.012 |
 | Age 50 to 64 | 725 | 0.957 (0.942 to 0.971) | 0.015 |
 | Age 65 and over | 653 | 0.962 (0.948 to 0.975) | 0.016 |
-| AJCC stage I | 219 | 0.973 (0.950 to 0.991) | 0.017 |
-| AJCC stage II | 121 | 0.983 (0.959 to 1.000) | 0.014 |
-| AJCC stage III | 108 | 0.935 (0.889 to 0.981) | 0.034 |
-| AJCC stage IV | 80 | 0.925 (0.862 to 0.975) | 0.047 |
+| AJCC stage I | 354 | 0.969 (0.949 to 0.986) | 0.014 |
+| AJCC stage II | 427 | 0.970 (0.951 to 0.984) | 0.020 |
+| AJCC stage III | 288 | 0.931 (0.899 to 0.958) | 0.034 |
+| AJCC stage IV | 157 | 0.949 (0.911 to 0.981) | 0.037 |
 | Class with 300+ training tumours | 1,182 | 0.975 (0.965 to 0.984) | 0.009 |
 | Class with 100 to 299 training tumours | 536 | 0.968 (0.951 to 0.981) | 0.017 |
 | Class with fewer than 100 training tumours | 150 | 0.887 (0.840 to 0.933) | 0.073 |
 
-The clear weakness is rare cancer types: accuracy drops by about nine points and the model is over-confident on them. Late-stage tumours are somewhat harder, with wide intervals. No sex difference is detectable.
+The clear weakness is rare cancer types: accuracy drops by about nine points and the model is over-confident on them. Stage III tumours are somewhat harder (0.931 against 0.97 for stages I and II); stage IV sits in between, with a wide interval. No sex difference is detectable.
 
 ## Unseen sites
 
@@ -86,7 +86,7 @@ An empty set is an abstention; among non-empty LAC sets at α = 0.10, 98.8% cont
 - Cancers of the same organ (colon vs rectum, oesophagus vs stomach) are not reliably separated; this reflects biology as much as the model.
 - Coverage guarantees assume test data are exchangeable with the calibration data, which the metastases result shows does not hold under shift.
 - Random test splits share hospital sites with the training data; the held-out-site estimate above is the one to quote for a new centre.
-- Clinical metadata used for subgroups are missing for many patients (stage for 1,340 of 1,868 test tumours).
+- Clinical metadata used for subgroups are missing for many patients (stage for 642 of 1,868 test tumours).
 
 ## Intended use
 
