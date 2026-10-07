@@ -330,6 +330,39 @@ means the model abstains.
 make docker      # builds the image and runs the tests inside it; data/ and results/ are mounted
 ```
 
+### Seed stability (Nextflow)
+
+The benchmark above is one training seed. `main.nf` reruns it over several seeds, with each
+gene universe x model x seed as its own Nextflow task, and pools the runs with
+`scripts/18_seed_stability.py`. The test split stays fixed; the seed changes the CV folds, the
+model initialisation and the bootstrap. What this adds over the Makefile:
+
+- independent runs execute in parallel, each limited to its own cores (XGBoost and joblib are
+  told how many), while the MLP runs one task at a time because they share the GPU;
+- `-resume` caches every task by its inputs, so adding a seed or a model only runs the new
+  tasks, and editing a script reruns only the tasks that used it;
+- a task killed for memory is retried with more; per-task timings go to
+  `results/nextflow/pipeline_info/`.
+
+```bash
+mamba env create -f envs/nextflow.yml                   # Nextflow + Java 21
+mamba run -n nextflow nextflow run . -profile test      # synthetic data, about 2 minutes
+mamba run -n nextflow nextflow run . --models logreg    # real data, 5 seeds, about 2 minutes
+mamba run -n nextflow nextflow run . -resume            # add XGBoost and the MLP (about 2 h)
+```
+
+Logistic regression over seeds 42 to 46 (`results/nextflow/seed_stability/`):
+
+| Genes | Macro-F1, mean | SD over seeds | Range |
+|---|---|---|---|
+| lncRNA | 0.9457 | 0.0001 | 0.9457–0.9458 |
+| protein-coding | 0.9349 | 0.0012 | 0.9328–0.9354 |
+
+The seed SD is under 7% of the test-set bootstrap CI half-width, so the intervals in the
+benchmark table are dominated by test-set sampling, not by training noise. The lncRNA minus
+protein-coding macro-F1 gap is +0.010 to +0.013 and positive for all five seeds. XGBoost and
+the MLP, which depend more on the seed, have not been run over seeds yet.
+
 ## Repository layout
 
 ```
@@ -345,7 +378,9 @@ src/lncpan/
   calibration.py            temperature scaling, reliability curves
   cli.py                    `lncpan predict`
   isolation.py              per-model process isolation (see note below)
-scripts/01…16_*.py          pipeline steps and the analyses above (wired into the Makefile)
+scripts/01…17_*.py          pipeline steps and the analyses above (wired into the Makefile)
+scripts/18_seed_stability.py  pools benchmark runs over seeds
+main.nf, modules/, nextflow.config  Nextflow seed-stability pipeline (profiles: default, test)
 tests/                      pytest suite, run in CI
 results/tables, figures     all numbers and figures shown in this README
 ```
