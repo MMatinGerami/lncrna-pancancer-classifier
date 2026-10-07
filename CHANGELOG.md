@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Seed stability for all three models (seeds 42 to 46): logistic regression varies least (macro-F1 SD 0.0001 lncRNA), the MLP most (0.009); the lncRNA advantage holds for every seed with logistic regression and XGBoost but not the MLP.
 - Nextflow seed-stability pipeline (`main.nf`, `modules/benchmark.nf`, `nextflow.config`, `scripts/18_seed_stability.py`): each gene universe x model x seed is a cached, resource-limited task; `-profile test` runs on synthetic data (`scripts/make_toy_data.py`, `configs/toy.yaml`) and in CI. Logistic regression over seeds 42 to 46: lncRNA macro-F1 SD 0.0001, protein-coding 0.0012, lncRNA ahead for every seed.
 - `02_benchmark.py` takes `--config`, `--seed`, `--processed` and `--results` (`lncpan.config.with_overrides`).
 - Fix: each logistic regression fit left joblib's worker pool idle for its 300 s timeout, and the isolated process could not exit until it expired; `run_isolated` now shuts the pool down. A toy benchmark went from about 10 minutes to under one.
