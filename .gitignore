@@ -11,3 +11,11 @@ data/processed/*
 results/models/
 results/predictions/
 logs/
+
+# Nextflow
+.nextflow/
+.nextflow.log*
+work/
+results/nextflow-test/
+results/nextflow/runs/
+results/nextflow/pipeline_info/
