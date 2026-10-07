@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Nextflow seed-stability pipeline (`main.nf`, `modules/benchmark.nf`, `nextflow.config`, `scripts/18_seed_stability.py`): each gene universe x model x seed is a cached, resource-limited task; `-profile test` runs on synthetic data (`scripts/make_toy_data.py`, `configs/toy.yaml`) and in CI. Logistic regression over seeds 42 to 46: lncRNA macro-F1 SD 0.0001, protein-coding 0.0012, lncRNA ahead for every seed.
+- `02_benchmark.py` takes `--config`, `--seed`, `--processed` and `--results` (`lncpan.config.with_overrides`).
+- Fix: each logistic regression fit left joblib's worker pool idle for its 300 s timeout, and the isolated process could not exit until it expired; `run_isolated` now shuts the pool down. A toy benchmark went from about 10 minutes to under one.
 - `Dataset.split` raises on a label outside the training classes instead of mapping it silently to a neighbouring class index (`np.searchsorted` returns a position for any value); tested in `tests/test_io.py`.
 - README: the test set is not used for tuning, but it is not used only once either; the robustness analyses rescore it, and the sparse panel size is read off it.
 - Fix: AJCC stage parsing dropped every sub-staged tumour ("Stage IIIA" and so on), leaving 528 of 1,868 test tumours with a stage instead of 1,226. Subgroup table, figure and model card regenerated; stage III remains the hardest (0.931), stage IV is 0.949, not 0.925. `parse_stage` is now tested.
