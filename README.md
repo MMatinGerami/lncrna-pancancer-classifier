@@ -348,20 +348,28 @@ model initialisation and the bootstrap. What this adds over the Makefile:
 mamba env create -f envs/nextflow.yml                   # Nextflow + Java 21
 mamba run -n nextflow nextflow run . -profile test      # synthetic data, about 2 minutes
 mamba run -n nextflow nextflow run . --models logreg    # real data, 5 seeds, about 2 minutes
-mamba run -n nextflow nextflow run . -resume            # add XGBoost and the MLP (about 2 h)
+mamba run -n nextflow nextflow run .                    # all models, about 85 min on an M5 Pro
 ```
 
-Logistic regression over seeds 42 to 46 (`results/nextflow/seed_stability/`):
+Macro-F1 over seeds 42 to 46 (`results/nextflow/seed_stability/`); seed 42 reproduces the
+benchmark table above:
 
-| Genes | Macro-F1, mean | SD over seeds | Range |
-|---|---|---|---|
-| lncRNA | 0.9457 | 0.0001 | 0.9457–0.9458 |
-| protein-coding | 0.9349 | 0.0012 | 0.9328–0.9354 |
+| Genes | Model | Mean | SD over seeds | Range | SD / CI half-width |
+|---|---|---|---|---|---|
+| lncRNA | Logistic regression | 0.9457 | 0.0001 | 0.9457–0.9458 | 0.004 |
+| lncRNA | XGBoost | 0.9401 | 0.0035 | 0.9359–0.9442 | 0.23 |
+| lncRNA | MLP | 0.9397 | 0.0091 | 0.9300–0.9536 | 0.59 |
+| protein-coding | Logistic regression | 0.9349 | 0.0012 | 0.9328–0.9354 | 0.07 |
+| protein-coding | XGBoost | 0.9260 | 0.0033 | 0.9211–0.9298 | 0.18 |
+| protein-coding | MLP | 0.9322 | 0.0065 | 0.9215–0.9372 | 0.39 |
 
-The seed SD is under 7% of the test-set bootstrap CI half-width, so the intervals in the
-benchmark table are dominated by test-set sampling, not by training noise. The lncRNA minus
-protein-coding macro-F1 gap is +0.010 to +0.013 and positive for all five seeds. XGBoost and
-the MLP, which depend more on the seed, have not been run over seeds yet.
+Logistic regression stays the best model on average and barely moves with the seed. The MLP
+moves most: its lncRNA range is 2.4 points wide and its best seed beats logistic regression,
+so a single-seed comparison of the neural network is not reliable. Seed spread is below the
+test-set bootstrap CI half-width for every model, so the intervals in the benchmark table
+are dominated by test-set sampling. The lncRNA minus protein-coding gap is positive for all
+five seeds with logistic regression (+0.010 to +0.013) and XGBoost (+0.010 to +0.019); with
+the MLP it changes sign once (−0.006 to +0.023).
 
 ## Repository layout
 
