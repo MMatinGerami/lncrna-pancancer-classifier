@@ -1,0 +1,33 @@
+# Small grids for the synthetic dataset (scripts/make_toy_data.py). Used by the Nextflow
+# test profile and CI; not for real results.
+seed: 42
+
+paths:
+  raw: data/raw
+  processed: data/processed
+  results: results
+
+split:
+  test_size: 0.2
+  cv_folds: 3
+
+features:
+  top_k_variance: 30
+
+models:
+  logreg:
+    C: [0.1, 1.0]
+  xgboost:
+    max_depth: [3]
+    learning_rate: [0.1]
+    n_estimators: [20]
+    subsample: [0.8]
+    colsample_bytree: [0.5]
+  mlp:
+    hidden_dims: [[32]]
+    dropout: [0.2]
+    weight_decay: [0.0001]
+    lr: [0.001]
+    max_epochs: [5]
+    batch_size: [64]
+    device: [cpu]

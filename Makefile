@@ -1,4 +1,4 @@
-.PHONY: all data prepare benchmark budget interpret external figures ablation conformal subgroups curve sites met500 met500-calibration markers site-signal panel microenv test lint docker
+.PHONY: all data prepare benchmark budget interpret external figures ablation conformal subgroups curve sites met500 met500-calibration markers site-signal panel microenv test lint docker nextflow nextflow-test
 
 all: prepare benchmark budget interpret external figures ablation conformal subgroups curve sites met500 met500-calibration markers site-signal panel microenv
 
@@ -21,5 +21,7 @@ site-signal: ; uv run python scripts/15_site_signal.py
 panel:       ; uv run python scripts/16_sparse_panel.py
 microenv:    ; uv run python scripts/17_microenvironment.py
 docker:      ; docker build -t lncpan . && docker run --rm -v "$$PWD/data:/app/data" -v "$$PWD/results:/app/results" lncpan make test
+nextflow:    ; mamba run -n nextflow nextflow run . -resume
+nextflow-test: ; mamba run -n nextflow nextflow run . -profile test
 test:        ; uv run pytest -q
 lint:        ; uv run ruff check . && uv run ruff format --check .
