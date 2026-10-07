@@ -3,6 +3,11 @@
 Usage:
   python scripts/02_benchmark.py [--models logreg xgboost mlp]
                                  [--universes lncRNA protein_coding]
+                                 [--config configs/default.yaml] [--seed 42]
+                                 [--processed DIR] [--results DIR]
+
+The last four options exist for the Nextflow pipeline (main.nf), which runs every
+universe x model x seed combination as its own task in its own directory.
 """
 
 from __future__ import annotations
@@ -15,16 +20,15 @@ import joblib
 import pandas as pd
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
 
-from lncpan.config import load_config
+from lncpan.config import Config, load_config, with_overrides
 from lncpan.evaluate import evaluate
 from lncpan.io import load_dataset
 from lncpan.isolation import run_isolated
 from lncpan.models import MODEL_NAMES, build_model, param_grid
 
 
-def run_one(universe: str, name: str) -> None:
+def run_one(cfg: Config, universe: str, name: str) -> None:
     """Tune, refit and evaluate one model on one gene universe (runs in its own process)."""
-    cfg = load_config()
     res = cfg.path("results")
     k = cfg["features"]["top_k_variance"]
     cv = StratifiedKFold(cfg["split"]["cv_folds"], shuffle=True, random_state=cfg.seed)
@@ -56,6 +60,7 @@ def run_one(universe: str, name: str) -> None:
     summary = {
         "universe": universe,
         "model": name,
+        "seed": cfg.seed,
         "best_params": search.best_params_,
         "cv_macro_f1": search.best_score_,
         "minutes": (time.time() - t0) / 60,
@@ -73,14 +78,20 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--models", nargs="+", default=list(MODEL_NAMES))
     ap.add_argument("--universes", nargs="+", default=["lncRNA", "protein_coding"])
+    ap.add_argument("--config", default=None, help="YAML config (default: configs/default.yaml)")
+    ap.add_argument("--seed", type=int, default=None, help="override the config seed")
+    ap.add_argument("--processed", default=None, help="directory with the processed matrices")
+    ap.add_argument("--results", default=None, help="output directory")
     args = ap.parse_args()
 
-    res = load_config().path("results")
+    cfg = load_config(args.config) if args.config else load_config()
+    cfg = with_overrides(cfg, args.seed, processed=args.processed, results=args.results)
+    res = cfg.path("results")
     for sub in ("models", "predictions", "tables"):
         (res / sub).mkdir(exist_ok=True)
     for universe in args.universes:
         for name in args.models:
-            run_isolated(run_one, universe, name)
+            run_isolated(run_one, cfg, universe, name)
 
 
 if __name__ == "__main__":
