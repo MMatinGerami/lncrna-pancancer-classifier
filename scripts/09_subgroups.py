@@ -15,6 +15,8 @@ figures/fig9_subgroups.png.
 
 from __future__ import annotations
 
+import sys
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -22,7 +24,17 @@ from sklearn.metrics import f1_score, top_k_accuracy_score
 
 from lncpan.config import load_config
 from lncpan.evaluate import expected_calibration_error
-from lncpan.plotting import INK_2, INK_3, UNIVERSE_COLORS, UNIVERSE_LABELS, apply_style
+from lncpan.plotting import (
+    DOUBLE,
+    INK_2,
+    INK_3,
+    MM,
+    UNIVERSE_COLORS,
+    UNIVERSE_LABELS,
+    apply_style,
+    panel_label,
+    save,
+)
 
 N_BOOT = 1000
 AGE_BINS = [0, 50, 65, 200]
@@ -123,67 +135,102 @@ def main() -> None:
     plot(out, sizes, figures)
 
 
+LEVEL_ORDER = {"rarity": RARITY_LABELS, "age_group": AGE_LABELS, "stage": ["I", "II", "III", "IV"]}
+FACTOR_NAMES = {
+    "rarity": "Training tumours in class",
+    "stage": "AJCC stage",
+    "age_group": "Age (years)",
+    "sex": "Sex",
+}
+
+
 def plot(out: pd.DataFrame, sizes: pd.DataFrame, figures) -> None:
     apply_style()
-    fig, axes = plt.subplots(1, 2, figsize=(10, 3.6), gridspec_kw={"width_ratios": [3, 2]})
+    fig, axes = plt.subplots(
+        1, 2, figsize=(DOUBLE * 0.85, 68 * MM), gridspec_kw={"width_ratios": [1.3, 1]}
+    )
     ax = axes[0]
     d = out[out.universe == "lncRNA"]
     d = d[d.level != "Not reported"]
     labels, ticks, y_pos = [], [], 0.0
     for factor in ("rarity", "stage", "age_group", "sex"):
-        for _, r in d[d.factor == factor].iterrows():
+        ax.text(
+            -0.02,
+            y_pos,
+            FACTOR_NAMES[factor],
+            transform=ax.get_yaxis_transform(),
+            ha="right",
+            va="center",
+            fontsize=6,
+            fontweight="bold",
+        )
+        y_pos += 1
+        rows = d[d.factor == factor]
+        order = LEVEL_ORDER.get(factor)
+        if order:
+            rows = rows.set_index("level").loc[[lv for lv in order if lv in set(rows.level)]]
+            rows = rows.reset_index()
+        for _, r in rows.iterrows():
             ax.errorbar(
                 r["accuracy"],
                 y_pos,
                 xerr=[[r["accuracy"] - r["accuracy_low"]], [r["accuracy_high"] - r["accuracy"]]],
                 fmt="o",
                 color=UNIVERSE_COLORS["lncRNA"],
-                capsize=2,
-                lw=1,
+                elinewidth=0.8,
             )
-            labels.append(f"{factor.replace('_', ' ')}: {r['level']}  (n={r['n']})")
+            labels.append(f"{r['level']} (n = {r['n']})")
             ticks.append(y_pos)
             y_pos += 1
-        y_pos += 0.6
-    ax.set_yticks(ticks)
-    ax.set_yticklabels(labels, fontsize=7)
-    ax.invert_yaxis()
-    ax.set(
-        xlabel="Accuracy on test tumours (95% bootstrap CI)",
-        title="lncRNA model by patient and class subgroup",
-    )
+        y_pos += 0.4
+    ax.set_yticks(ticks, labels)
+    ax.tick_params(axis="y", length=0)
+    ax.spines["left"].set_visible(False)
+    ax.set_ylim(y_pos - 0.6, -0.8)
+    ax.set_xlabel("Accuracy (test set)")
+    panel_label(ax, "a", x=-0.62, y=1.02)
 
     ax = axes[1]
     for universe, sub in sizes.groupby("universe"):
         ax.scatter(
             sub["n_train"],
             sub["f1"],
-            s=18,
+            s=9,
             color=UNIVERSE_COLORS[universe],
             label=UNIVERSE_LABELS[universe],
-            alpha=0.8,
+            edgecolor="white",
+            lw=0.3,
         )
     lnc = sizes[sizes.universe == "lncRNA"]
     for _, r in lnc[lnc.f1 < 0.8].iterrows():
         ax.annotate(
             r["cancer_type"],
             (r["n_train"], r["f1"]),
-            fontsize=6.5,
+            fontsize=5,
             color=INK_2,
-            xytext=(3, 2),
+            ha="right",
+            xytext=(-3, 2),
             textcoords="offset points",
         )
-    ax.set(
-        xscale="log",
-        xlabel="Training tumours per class",
-        ylabel="Per-class F1 (test)",
-        title="Rare classes are the hard ones",
-    )
-    ax.axvline(100, color=INK_3, lw=0.8, ls=":")
+    ax.set_xscale("log")
+    ticks_n = [30, 100, 300, 1000]
+    ax.set_xticks(ticks_n, [f"{t:,}" for t in ticks_n])
+    ax.minorticks_off()
+    ax.set(xlabel="Training tumours per class", ylabel="Per-class F1 (test set)")
+    ax.axvline(100, color=INK_3, lw=0.6, ls=":")
     ax.legend(loc="lower right")
-    fig.savefig(figures / "fig9_subgroups.png")
-    plt.close(fig)
+    panel_label(ax, "b", x=-0.22, y=1.02)
+    fig.tight_layout(w_pad=2)
+    save(fig, figures / "fig9_subgroups")
 
 
 if __name__ == "__main__":
-    main()
+    if "--plot-only" in sys.argv:  # redraw from the saved tables, no refitting
+        res = load_config().path("results")
+        plot(
+            pd.read_csv(res / "tables" / "subgroup_performance.csv"),
+            pd.read_csv(res / "tables" / "per_class_size_vs_f1.csv"),
+            res / "figures",
+        )
+    else:
+        main()

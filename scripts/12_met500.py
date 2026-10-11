@@ -24,6 +24,7 @@ Writes results/tables/met500_{summary,per_cohort,conformal}.csv and figures/fig1
 from __future__ import annotations
 
 import json
+import sys
 
 import joblib
 import matplotlib.pyplot as plt
@@ -32,7 +33,16 @@ import pandas as pd
 
 from lncpan.config import load_config
 from lncpan.conformal import prediction_sets
-from lncpan.plotting import INK_2, INK_3, UNIVERSE_COLORS, apply_style
+from lncpan.plotting import (
+    DOUBLE,
+    INK_2,
+    INK_3,
+    MM,
+    UNIVERSE_COLORS,
+    apply_style,
+    panel_label,
+    save,
+)
 
 COHORT_TO_TCGA = {
     "BRCA": {"BRCA"},
@@ -198,26 +208,26 @@ def main() -> None:
 
 def plot(summary: pd.DataFrame, pc: pd.DataFrame, figures) -> None:
     apply_style()
-    fig, axes = plt.subplots(1, 2, figsize=(11, 3.8), gridspec_kw={"width_ratios": [3, 1.4]})
+    fig, axes = plt.subplots(
+        1, 2, figsize=(DOUBLE * 0.9, 58 * MM), gridspec_kw={"width_ratios": [3, 1.1]}
+    )
+    colour = UNIVERSE_COLORS["protein_coding"]
     ax = axes[0]
     d = pc[pc.universe == "protein_coding"].sort_values("n", ascending=False)
     x = np.arange(len(d))
-    ax.bar(
-        x - 0.18, d["accuracy"], width=0.36, color=UNIVERSE_COLORS["protein_coding"], label="top-1"
-    )
-    ax.bar(x + 0.18, d["top3"], width=0.36, color="#f5b79b", label="top-3")
-    ax.set_xticks(x)
-    ax.set_xticklabels(
-        [f"{c} ({n})" for c, n in zip(d["cohort"], d["n"], strict=True)],
-        fontsize=7,
-        rotation=90,
+    ax.bar(x - 0.2, d["accuracy"], width=0.4, color=colour, label="Top-1", lw=0)
+    ax.bar(x + 0.2, d["top3"], width=0.4, color=colour, alpha=0.4, label="Top-3", lw=0)
+    ax.set_xticks(
+        x, [f"{c} ({n})" for c, n in zip(d["cohort"], d["n"], strict=True)], rotation=90, fontsize=5
     )
     ax.set(
-        ylim=(0, 1.02),
+        xlim=(-0.7, len(d) - 0.3),
+        ylim=(0, 1.0),
         ylabel="Fraction of patients",
-        title="MET500 metastases, protein-coding model: primary site recovered",
+        xlabel="Primary site of the metastasis (number of patients)",
     )
-    ax.legend(loc="lower left", fontsize=7)
+    ax.legend(loc="lower left", bbox_to_anchor=(0, 1.0), ncol=2)
+    panel_label(ax, "a", x=-0.08, y=1.08)
     ax = axes[1]
     s = summary[summary.universe == "protein_coding"].set_index("group")
     groups = ["all", "poly-A", "capture"]
@@ -228,17 +238,29 @@ def plot(summary: pd.DataFrame, pc: pd.DataFrame, figures) -> None:
             s.loc[groups, "accuracy"] - s.loc[groups, "accuracy_low"],
             s.loc[groups, "accuracy_high"] - s.loc[groups, "accuracy"],
         ],
-        capsize=3,
-        color=UNIVERSE_COLORS["protein_coding"],
+        color=colour,
+        lw=0,
+        error_kw={"elinewidth": 0.8},
     )
-    ax.set_xticks(np.arange(3))
-    ax.set_xticklabels([f"{g}\nn={int(s.loc[g, 'n'])}" for g in groups], fontsize=8)
-    ax.set(ylim=(0, 1.02), title="By library type")
-    ax.axhline(s.loc["all", "top3"], color=INK_3, ls="--", lw=1)
-    ax.text(2.45, s.loc["all", "top3"], "top-3", fontsize=7, color=INK_2, va="bottom", ha="right")
-    fig.savefig(figures / "fig12_met500.png")
-    plt.close(fig)
+    ax.set_xticks(
+        np.arange(3),
+        [f"{g.capitalize() if g == 'all' else g}\n(n = {int(s.loc[g, 'n'])})" for g in groups],
+    )
+    ax.set(ylim=(0, 1.0), ylabel="Top-1 accuracy", xlabel="Library type")
+    ax.axhline(s.loc["all", "top3"], color=INK_3, ls="--", lw=0.6)
+    ax.text(2.4, s.loc["all", "top3"] + 0.015, "Top-3, all", fontsize=5, color=INK_2, ha="right")
+    panel_label(ax, "b", x=-0.3, y=1.08)
+    fig.tight_layout(w_pad=2)
+    save(fig, figures / "fig12_met500")
 
 
 if __name__ == "__main__":
-    main()
+    if "--plot-only" in sys.argv:  # redraw from the saved tables, no refitting
+        res = load_config().path("results")
+        plot(
+            pd.read_csv(res / "tables" / "met500_summary.csv"),
+            pd.read_csv(res / "tables" / "met500_per_cohort.csv"),
+            res / "figures",
+        )
+    else:
+        main()

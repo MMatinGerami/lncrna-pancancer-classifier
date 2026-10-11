@@ -14,14 +14,22 @@ from lncpan.evaluate import paired_bootstrap_difference
 from lncpan.features import TopVarianceSelector
 from lncpan.io import load_dataset
 from lncpan.plotting import (
+    BLUE,
     DIVERGING,
+    DOUBLE,
+    INK,
     INK_2,
     INK_3,
+    MM,
     MODEL_LABELS,
+    ONE_HALF,
     SEQUENTIAL,
+    SINGLE,
     UNIVERSE_COLORS,
     UNIVERSE_LABELS,
     apply_style,
+    panel_label,
+    save,
 )
 
 cfg = load_config()
@@ -39,73 +47,84 @@ def best_model(universe: str, metrics: pd.DataFrame) -> str:
     return m.sort_values("value").iloc[-1]["model"]
 
 
-def fig_tsne() -> None:
+def tsne_embedding() -> pd.DataFrame:
+    """2-D t-SNE of the training tumours, cached so figures can be redrawn without refitting."""
+    path = TAB / "tsne_lncrna.csv"
+    if path.exists():
+        return pd.read_csv(path)
     ds = load_dataset(cfg, "lncRNA")
     X, y = ds.split("train")
     Z = TopVarianceSelector(2000).fit_transform(X.to_numpy())
     Z = PCA(50, random_state=cfg.seed).fit_transform((Z - Z.mean(0)) / (Z.std(0) + 1e-6))
     emb = TSNE(2, perplexity=40, init="pca", random_state=cfg.seed).fit_transform(Z)
-    fig, ax = plt.subplots(figsize=(7.2, 6.4))
-    ax.scatter(emb[:, 0], emb[:, 1], s=3, c="#2a78d6", alpha=0.35, linewidths=0)
-    for c, name in enumerate(ds.classes):
-        cx, cy = np.median(emb[y == c], axis=0)
-        ax.text(
-            cx,
-            cy,
-            name,
-            fontsize=7.5,
-            weight="bold",
-            ha="center",
-            va="center",
-            color="#0b0b0b",
-            bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.8),
-        )
-    ax.set(xticks=[], yticks=[], xlabel="t-SNE 1", ylabel="t-SNE 2")
-    ax.grid(False)
-    ax.set_title(
-        f"lncRNA expression alone separates 33 cancer types (n = {len(y):,} training tumours)",
-        loc="left",
+    out = pd.DataFrame(
+        {"sample": X.index, "tsne_1": emb[:, 0], "tsne_2": emb[:, 1], "cancer_type": ds.classes[y]}
     )
-    fig.savefig(FIG / "fig1_tsne_lncrna.png")
-    plt.close(fig)
+    out.to_csv(path, index=False)
+    return out
+
+
+def _spread_labels(xy: np.ndarray, box: tuple[float, float], n_iter: int = 500) -> np.ndarray:
+    """Move label centres apart until their boxes (width, height in data units) do not overlap."""
+    xy = xy.astype(float).copy()
+    w, h = box
+    for _ in range(n_iter):
+        moved = False
+        for i in range(len(xy)):
+            for j in range(i + 1, len(xy)):
+                dx, dy = xy[j] - xy[i]
+                ox, oy = w - abs(dx), h - abs(dy)
+                if ox > 0 and oy > 0:  # overlap: separate along the axis that needs less movement
+                    if ox / w < oy / h:
+                        step = np.array([np.sign(dx) or 1.0, 0.0]) * ox / 2
+                    else:
+                        step = np.array([0.0, np.sign(dy) or 1.0]) * oy / 2
+                    xy[i] -= step
+                    xy[j] += step
+                    moved = True
+        if not moved:
+            break
+    return xy
+
+
+def fig_tsne() -> None:
+    emb = tsne_embedding()
+    fig, ax = plt.subplots(figsize=(SINGLE, SINGLE))
+    ax.scatter(emb.tsne_1, emb.tsne_2, s=0.6, c=BLUE, alpha=0.35, linewidths=0, rasterized=True)
+    centres = emb.groupby("cancer_type")[["tsne_1", "tsne_2"]].median()
+    span = np.ptp(emb[["tsne_1", "tsne_2"]].to_numpy(), axis=0).max()
+    pos = _spread_labels(centres.to_numpy(), box=(0.085 * span, 0.032 * span))
+    for name, (x, y) in zip(centres.index, pos, strict=True):
+        ax.text(x, y, name, fontsize=5, ha="center", va="center", color=INK)
+    ax.set(xticks=[], yticks=[], xlabel="t-SNE 1", ylabel="t-SNE 2")
+    save(fig, FIG / "fig1_tsne_lncrna")
 
 
 def fig_benchmark(metrics: pd.DataFrame) -> None:
-    fig, axes = plt.subplots(1, 2, figsize=(9, 3.4))
-    for ax, metric, label in zip(
-        axes, ["macro_f1", "top3_accuracy"], ["Macro-F1", "Top-3 accuracy"], strict=True
+    fig, axes = plt.subplots(1, 2, figsize=(DOUBLE * 0.75, 52 * MM))
+    for ax, letter, metric, label in zip(
+        axes, "ab", ["macro_f1", "top3_accuracy"], ["Macro-F1", "Top-3 accuracy"], strict=True
     ):
         m = metrics[metrics.metric == metric]
         x = np.arange(len(MODELS))
         for i, u in enumerate(["lncRNA", "protein_coding"]):
             d = m[m.universe == u].set_index("model").loc[MODELS]
             ax.errorbar(
-                x + (i - 0.5) * 0.22,
+                x + (i - 0.5) * 0.24,
                 d.value,
                 yerr=[d.value - d.ci_low, d.ci_high - d.value],
                 fmt="o",
-                ms=7,
-                capsize=3,
                 color=UNIVERSE_COLORS[u],
                 label=UNIVERSE_LABELS[u],
-                lw=1.5,
+                elinewidth=0.8,
             )
         ax.set_xticks(x, [MODEL_LABELS[k] for k in MODELS])
         ax.set_xlim(-0.6, len(MODELS) - 0.4)
-        ax.set_ylabel(f"{label} (test set, 95% CI)")
-        ax.grid(axis="x", visible=False)
-    handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper right", ncol=2, bbox_to_anchor=(0.99, 1.0))
-    fig.suptitle(
-        "lncRNAs match protein-coding genes for tissue-of-origin classification",
-        x=0.01,
-        ha="left",
-        weight="bold",
-        fontsize=10,
-    )
-    fig.tight_layout()
-    fig.savefig(FIG / "fig2_benchmark.png")
-    plt.close(fig)
+        ax.set_ylabel(f"{label} (test set)")
+        panel_label(ax, letter, x=-0.2)
+    axes[0].legend(loc="lower left")
+    fig.tight_layout(w_pad=2.5)
+    save(fig, FIG / "fig2_benchmark")
 
 
 def fig_confusion(model: str) -> None:
@@ -113,20 +132,28 @@ def fig_confusion(model: str) -> None:
     classes = p.columns[:-1].to_numpy()
     pred = classes[p[classes].to_numpy().argmax(1)]
     cm = confusion_matrix(p["true"], pred, labels=classes, normalize="true")
-    fig, ax = plt.subplots(figsize=(8, 7))
+    fig, ax = plt.subplots(figsize=(ONE_HALF, ONE_HALF * 0.92))
     im = ax.imshow(cm, cmap=SEQUENTIAL, vmin=0, vmax=1)
-    ax.set_xticks(range(len(classes)), classes, rotation=90, fontsize=7)
-    ax.set_yticks(range(len(classes)), classes, fontsize=7)
-    ax.set(xlabel="Predicted", ylabel="True")
-    ax.grid(False)
-    for i, j in zip(*np.where((cm >= 0.08) & ~np.eye(len(classes), dtype=bool)), strict=True):
-        ax.text(j, i, f"{cm[i, j]:.2f}", ha="center", va="center", fontsize=5.5, color="#0b0b0b")
-    fig.colorbar(im, ax=ax, fraction=0.03, label="Fraction of true class")
-    ax.set_title(
-        f"Confusion matrix, lncRNA {MODEL_LABELS[model]} (test set, row-normalised)", loc="left"
-    )
-    fig.savefig(FIG / "fig3_confusion_lncrna.png")
-    plt.close(fig)
+    ax.set_xticks(range(len(classes)), classes, rotation=90, fontsize=5)
+    ax.set_yticks(range(len(classes)), classes, fontsize=5)
+    ax.tick_params(length=1.5, width=0.4)
+    ax.set(xlabel="Predicted cancer type", ylabel="True cancer type")
+    # every off-diagonal cell holding at least 5% of a class is labelled (rule stated in caption)
+    for i, j in zip(*np.where((cm >= 0.05) & ~np.eye(len(classes), dtype=bool)), strict=True):
+        colour = "white" if cm[i, j] > 0.5 else INK
+        ax.text(
+            j,
+            i,
+            f"{cm[i, j]:.2f}".lstrip("0"),
+            ha="center",
+            va="center",
+            fontsize=3.8,
+            color=colour,
+        )
+    cb = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02)
+    cb.set_label("Fraction of true class")
+    cb.outline.set_linewidth(0.4)
+    save(fig, FIG / "fig3_confusion_lncrna")
 
 
 def fig_per_class(metrics: pd.DataFrame) -> None:
@@ -138,63 +165,64 @@ def fig_per_class(metrics: pd.DataFrame) -> None:
         f1[u] = pd.Series(f1_score(p["true"], pred, labels=classes, average=None), index=classes)
     df = pd.DataFrame(f1)
     df.to_csv(TAB / "per_class_f1.csv")
-    fig, ax = plt.subplots(figsize=(4.8, 4.6))
-    ax.plot([0, 1], [0, 1], color=INK_3, lw=1, ls="--")
-    ax.scatter(
-        df.protein_coding, df.lncRNA, s=36, color="#2a78d6", edgecolor="white", lw=1, zorder=3
-    )
+    fig, ax = plt.subplots(figsize=(SINGLE * 0.8, SINGLE * 0.8))
+    lo = max(0, df.min().min() - 0.05)
+    ax.plot([lo, 1.01], [lo, 1.01], color=INK_3, lw=0.6, ls="--", zorder=1)
+    ax.scatter(df.protein_coding, df.lncRNA, s=10, color=BLUE, edgecolor="white", lw=0.4, zorder=3)
     for name, r in df.iterrows():
         if r.min() < 0.9 or abs(r.lncRNA - r.protein_coding) > 0.05:
+            # label above the point when another labelled point sits just to the right
+            others = df.drop(name)
+            crowded = (
+                (others.protein_coding.between(r.protein_coding, r.protein_coding + 0.07))
+                & ((others.lncRNA - r.lncRNA).abs() < 0.03)
+            ).any()
             ax.annotate(
                 name,
                 (r.protein_coding, r.lncRNA),
-                xytext=(4, -3),
+                xytext=(0, 3) if crowded else (3, -2),
+                ha="center" if crowded else "left",
+                va="bottom" if crowded else "center",
                 textcoords="offset points",
-                fontsize=7,
+                fontsize=5,
                 color=INK_2,
             )
-    lo = max(0, df.min().min() - 0.05)
     ax.set(
         xlim=(lo, 1.01),
         ylim=(lo, 1.01),
         xlabel="F1, protein-coding model",
         ylabel="F1, lncRNA model",
+        aspect="equal",
     )
-    ax.set_title("Per-cancer F1 (test set)", loc="left")
-    fig.savefig(FIG / "fig4_per_class_f1.png")
-    plt.close(fig)
+    save(fig, FIG / "fig4_per_class_f1")
 
 
 def fig_budget() -> None:
     b = pd.read_csv(TAB / "feature_budget.csv")
-    fig, ax = plt.subplots(figsize=(5.2, 3.4))
+    fig, ax = plt.subplots(figsize=(SINGLE, 55 * MM))
     for u, d in b.groupby("universe"):
         s = d.groupby("k").macro_f1.agg(["mean", "std"])
-        ax.plot(
-            s.index, s["mean"], marker="o", ms=5, color=UNIVERSE_COLORS[u], label=UNIVERSE_LABELS[u]
-        )
+        ax.plot(s.index, s["mean"], marker="o", color=UNIVERSE_COLORS[u], label=UNIVERSE_LABELS[u])
         ax.fill_between(
             s.index,
             s["mean"] - s["std"],
             s["mean"] + s["std"],
             color=UNIVERSE_COLORS[u],
-            alpha=0.15,
+            alpha=0.2,
             lw=0,
         )
     ax.set_xscale("log")
-    ax.set(
-        xlabel="Number of genes (most variable, selected within each fold)",
-        ylabel="Macro-F1 (5-fold CV, ±1 SD)",
-    )
+    ks = sorted(b["k"].unique())
+    ax.set_xticks(ks, [f"{k:,}" for k in ks])
+    ax.minorticks_off()
+    ax.set(xlabel="Number of most variable genes", ylabel="Macro-F1 (5-fold CV)")
     ax.legend(loc="lower right")
-    ax.set_title("A few hundred lncRNAs are enough", loc="left")
-    fig.savefig(FIG / "fig5_feature_budget.png")
-    plt.close(fig)
+    save(fig, FIG / "fig5_feature_budget")
 
 
 def fig_calibration(metrics: pd.DataFrame) -> None:
-    fig, ax = plt.subplots(figsize=(4.6, 4.2))
-    ax.plot([0, 1], [0, 1], color=INK_3, lw=1, ls="--")
+    fig, ax = plt.subplots(figsize=(SINGLE * 0.8, SINGLE * 0.8))
+    ax.plot([0, 1], [0, 1], color=INK_3, lw=0.6, ls="--")
     bins = np.linspace(0, 1, 11)
     for u in ("lncRNA", "protein_coding"):
         model = best_model(u, metrics)
@@ -210,17 +238,18 @@ def fig_calibration(metrics: pd.DataFrame) -> None:
             xs,
             ys,
             marker="o",
-            ms=5,
             color=UNIVERSE_COLORS[u],
-            label=f"{UNIVERSE_LABELS[u]}, {MODEL_LABELS[model]} (ECE {ece:.3f})",
+            label=f"{UNIVERSE_LABELS[u]} (ECE {ece:.3f})",
         )
     ax.set(
-        xlabel="Predicted confidence", ylabel="Observed accuracy", xlim=(0, 1.02), ylim=(0, 1.02)
+        xlabel="Predicted confidence",
+        ylabel="Observed accuracy",
+        xlim=(0, 1.02),
+        ylim=(0, 1.02),
+        aspect="equal",
     )
-    ax.legend(loc="upper left", fontsize=7)
-    ax.set_title("Calibration (test set)", loc="left")
-    fig.savefig(FIG / "fig6_calibration.png")
-    plt.close(fig)
+    ax.legend(loc="upper left")
+    save(fig, FIG / "fig6_calibration")
 
 
 def fig_markers() -> None:
@@ -231,18 +260,17 @@ def fig_markers() -> None:
     means = pd.DataFrame(X[genes].to_numpy(), columns=genes).groupby(ds.classes[y]).mean()
     z = (means - means.mean()) / means.std()
     names = mk.drop_duplicates("gene_id").set_index("gene_id").loc[genes, "gene_name"]
-    fig, ax = plt.subplots(figsize=(12, 6.5))
+    fig, ax = plt.subplots(figsize=(DOUBLE, 100 * MM))
     im = ax.imshow(z.to_numpy(), cmap=DIVERGING, vmin=-3, vmax=3, aspect="auto")
-    ax.set_yticks(range(len(z)), z.index, fontsize=7)
-    ax.set_xticks(range(len(genes)), names, rotation=90, fontsize=6)
-    ax.grid(False)
-    fig.colorbar(im, ax=ax, fraction=0.02, label="Mean expression, z-score across cancer types")
-    ax.set_title(
-        "Top SHAP lncRNA markers per cancer type (2 per type), mean expression in training tumours",
-        loc="left",
-    )
-    fig.savefig(FIG / "fig7_shap_markers.png")
-    plt.close(fig)
+    ax.set_yticks(range(len(z)), z.index, fontsize=5)
+    ax.set_xticks(range(len(genes)), names, rotation=90, fontsize=4.5)
+    ax.tick_params(length=1.5, width=0.4)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    cb = fig.colorbar(im, ax=ax, fraction=0.015, pad=0.01)
+    cb.set_label("Mean expression (z-score across cancer types)")
+    cb.outline.set_linewidth(0.4)
+    save(fig, FIG / "fig7_shap_markers")
 
 
 def table_paired_differences() -> None:
@@ -276,7 +304,7 @@ def main() -> None:
     if (TAB / "shap_markers_per_cancer.csv").exists():
         fig_markers()
     fig_tsne()
-    print(sorted(p.name for p in FIG.glob("*.png")))
+    print(sorted(p.name for p in FIG.glob("*.pdf")))
 
 
 if __name__ == "__main__":

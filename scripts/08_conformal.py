@@ -22,6 +22,7 @@ Writes results/tables/conformal_{summary,per_class}.csv and figures/fig8_conform
 from __future__ import annotations
 
 import json
+import sys
 
 import joblib
 import matplotlib.pyplot as plt
@@ -43,7 +44,16 @@ from lncpan.conformal import (
 )
 from lncpan.io import load_dataset
 from lncpan.models import build_model
-from lncpan.plotting import INK_2, INK_3, UNIVERSE_COLORS, apply_style
+from lncpan.plotting import (
+    DOUBLE,
+    INK_2,
+    INK_3,
+    MM,
+    UNIVERSE_COLORS,
+    apply_style,
+    panel_label,
+    save,
+)
 
 SERIES = [UNIVERSE_COLORS["lncRNA"], UNIVERSE_COLORS["protein_coding"]]
 
@@ -163,80 +173,91 @@ def main() -> None:
 
 def plot(summary: pd.DataFrame, per_class: pd.DataFrame, figures) -> None:
     apply_style()
-    fig, axes = plt.subplots(1, 3, figsize=(13.5, 3.8), gridspec_kw={"width_ratios": [3, 2, 2]})
+    fig, axes = plt.subplots(
+        1, 3, figsize=(DOUBLE, 62 * MM), gridspec_kw={"width_ratios": [3, 1.5, 1.5]}
+    )
+    variants = (
+        ("marginal", "Marginal", SERIES[0]),
+        ("class_conditional", "Class-conditional", SERIES[1]),
+    )
 
     ax = axes[0]
     pc = per_class[(per_class.score == "lac") & (per_class.alpha == 0.10)]
     order = pc[pc.variant == "marginal"].sort_values("n")["cancer_type"].tolist()
     x = np.arange(len(order))
-    for variant, colour, dx in (
-        ("marginal", SERIES[0], -0.18),
-        ("class_conditional", SERIES[1], 0.18),
-    ):
+    for (variant, label, colour), dx in zip(variants, (-0.2, 0.2), strict=True):
         d = pc[pc.variant == variant].set_index("cancer_type").loc[order]
-        ax.bar(x + dx, d["coverage"], width=0.36, color=colour, label=variant.replace("_", " "))
-    ax.axhline(0.9, color=INK_3, lw=1, ls="--")
-    ax.set(
-        xticks=x,
-        ylim=(0.5, 1.02),
-        ylabel="Coverage on test tumours",
-        title="Per-class coverage at α = 0.10 (LAC score)",
-    )
+        ax.bar(x + dx, d["coverage"], width=0.4, color=colour, label=label, lw=0)
+    ax.axhline(0.9, color=INK_3, lw=0.6, ls="--")
     ns = pc[pc.variant == "marginal"].set_index("cancer_type").loc[order]["n"]
-    ax.set_xticklabels(
-        [f"{c} ({n})" for c, n in zip(order, ns, strict=True)], fontsize=6, rotation=90
+    ax.set_xticks(
+        x, [f"{c} ({n})" for c, n in zip(order, ns, strict=True)], rotation=90, fontsize=4.5
     )
-    ax.set_xlabel("Cancer type and number of test tumours (sorted by size)", color=INK_2)
-    ax.legend(loc="lower right")
+    ax.tick_params(axis="x", length=1.5)
+    ax.set(xlim=(-0.7, len(order) - 0.3), ylim=(0, 1.0), ylabel="Coverage (test set)")
+    ax.legend(loc="lower left", bbox_to_anchor=(0.0, 1.0), ncol=2)
+    panel_label(ax, "a", x=-0.07, y=1.08)
 
     ax = axes[1]
     s = summary[(summary.split == "test") & (summary.score == "lac")]
-    for variant, colour in (("marginal", SERIES[0]), ("class_conditional", SERIES[1])):
+    for variant, label, colour in variants:
         d = s[s.variant == variant].sort_values("alpha")
-        ax.plot(1 - d["alpha"], d["mean_size"], "o-", color=colour, label=variant.replace("_", " "))
+        ax.plot(1 - d["alpha"], d["mean_size"], "o-", color=colour, label=label)
     ex = summary[(summary.split == "external") & (summary.score == "lac") & (summary.alpha == 0.10)]
     for _, r in ex.iterrows():
         ax.scatter(
             0.9,
             r["mean_size"],
             marker="s",
-            s=40,
-            color=SERIES[0] if r.variant == "marginal" else SERIES[1],
-            zorder=3,
+            s=14,
+            facecolor="white",
+            edgecolor=SERIES[0] if r.variant == "marginal" else SERIES[1],
+            lw=0.8,
+            zorder=4,
         )
+    ax.annotate(
+        "External\nmetastases",
+        (0.9, ex["mean_size"].max()),
+        xytext=(0.915, ex["mean_size"].max() - 2.6),
+        fontsize=5,
+        color=INK_2,
+        arrowprops={"arrowstyle": "-", "lw": 0.4, "color": INK_3},
+    )
     ax.set(
-        xlabel="Nominal coverage (1 - α)",
+        xticks=[0.9, 0.95],
+        xlim=(0.89, 0.96),
+        xlabel="Nominal coverage (1 − α)",
         ylabel="Mean set size (cancer types)",
-        title="Set size vs guarantee",
     )
-    ax.text(
-        0.905, ex["mean_size"].max(), "metastases (external)", fontsize=7, color=INK_2, va="bottom"
-    )
-    ax.legend(loc="upper left")
+    panel_label(ax, "b", x=-0.3, y=1.08)
 
     ax = axes[2]
     s = summary[(summary.split == "test") & (summary.alpha == 0.10)]
     scores = ["lac", "aps", "raps"]
     x = np.arange(len(scores))
-    for variant, colour, dx in (
-        ("marginal", SERIES[0], -0.18),
-        ("class_conditional", SERIES[1], 0.18),
-    ):
+    for (variant, label, colour), dx in zip(variants, (-0.2, 0.2), strict=True):
         d = s[s.variant == variant].set_index("score").loc[scores]
-        ax.bar(x + dx, d["mean_size"], width=0.36, color=colour, label=variant.replace("_", " "))
+        ax.bar(x + dx, d["mean_size"], width=0.4, color=colour, label=label, lw=0)
         for xi, (size, cov) in enumerate(zip(d["mean_size"], d["coverage"], strict=True)):
-            ax.text(xi + dx, size + 0.3, f"{cov:.2f}", ha="center", fontsize=6.5, color=INK_2)
+            ax.text(xi + dx, size + 0.25, f"{cov:.2f}", ha="center", fontsize=4.5, color=INK_2)
     ax.set(
         xticks=x,
         xticklabels=[sc.upper() for sc in scores],
-        ylabel="Mean set size on test tumours",
-        title="Score comparison at α = 0.10 (coverage above bars)",
-        ylim=(0, 18),
+        ylabel="Mean set size (test set)",
+        ylim=(0, 12),
     )
-    ax.legend(loc="upper right")
-    fig.savefig(figures / "fig8_conformal.png")
-    plt.close(fig)
+    panel_label(ax, "c", x=-0.3, y=1.08)
+    fig.tight_layout(w_pad=1.5)
+    save(fig, figures / "fig8_conformal")
 
 
 if __name__ == "__main__":
-    main()
+    if "--plot-only" in sys.argv:  # redraw from the saved tables, no refitting
+        tab = load_config().path("results") / "tables"
+        plot(
+            pd.read_csv(tab / "conformal_summary.csv"),
+            pd.read_csv(tab / "conformal_per_class.csv"),
+            load_config().path("results") / "figures",
+        )
+    else:
+        main()

@@ -34,6 +34,8 @@ tissue of origin of metastases from patients they have never seen.
 
 <p align="center"><img src="results/figures/fig1_tsne_lncrna.png" width="70%"></p>
 
+*Figure 1 | lncRNA expression alone separates the 33 cancer types.* t-SNE of the 7,469 training tumours on their 2,000 most variable lncRNAs (50 principal components as input); each label sits at the median position of its cancer type.
+
 ### Benchmark (held-out test set, n = 1,868; bootstrap 95% CIs)
 
 | Genes | Model | Macro-F1 | Balanced acc. | Top-3 acc. | Log-loss | ECE |
@@ -50,6 +52,8 @@ Each model uses the 2,000 most variable genes of its universe; hyperparameters w
 
 ![benchmark](results/figures/fig2_benchmark.png)
 
+*Figure 2 | lncRNA models match protein-coding models.* Macro-F1 (**a**) and top-3 accuracy (**b**) of each classifier on the 1,868 held-out tumours; error bars, 95% bootstrap confidence intervals.
+
 **The regularised linear model performs best.** With ~7,500 training tumours and features this
 tissue-specific, XGBoost and the MLP add no accuracy, and the linear model is also the best
 calibrated. The MLP's higher ECE is mostly
@@ -58,6 +62,8 @@ label smoothing, which softens its probabilities on purpose.
 ### Where the errors are
 
 ![confusion](results/figures/fig3_confusion_lncrna.png)
+
+*Figure 3 | Where the lncRNA model errs.* Row-normalised confusion matrix of the lncRNA logistic regression on the test set; off-diagonal cells that hold at least 5% of a true class are labelled.
 
 Almost all errors fall between cancers that share a tissue or cell of origin: **rectum vs
 colon** (READ is mostly called COAD; TCGA found non-hypermutated colon and rectal cancers to be
@@ -71,9 +77,16 @@ they reflect biology rather than a weakness specific to lncRNAs.
 <img src="results/figures/fig6_calibration.png" width="42%">
 </p>
 
+<img src="results/figures/fig6_calibration.png" width="42%">
+</p>
+
+*Figure 4 | Per-class accuracy and calibration.* Left, per-class F1 of the lncRNA model against the protein-coding model (one point per cancer type; dashed line, equality; labelled where F1 < 0.9 or the two differ by more than 0.05). Right, reliability curves of the best model of each gene set on the test set, with the expected calibration error (ECE).
+
 ### How many lncRNAs are needed?
 
 <p align="center"><img src="results/figures/fig5_feature_budget.png" width="55%"></p>
+
+*Figure 5 | A few hundred lncRNAs are enough.* Macro-F1 of logistic regression (5-fold CV, mean and ±1 SD) against the number of most variable genes, selected within each fold.
 
 Performance saturates at ~500 lncRNAs. At every budget up to 500 genes, lncRNAs beat the
 same number of protein-coding genes, which suggests that a compact lncRNA panel could carry
@@ -88,6 +101,8 @@ assay would therefore need a few hundred lncRNAs, not tens. The 376-gene panel i
 `results/tables/sparse_panel_genes.csv` with the cancer types each gene serves.
 
 <p align="center"><img src="results/figures/fig16_sparse_panel.png" width="55%"></p>
+
+*Figure 6 | A sparse lncRNA panel.* Test macro-F1 and accuracy on the external melanoma metastases against panel size (L1 selection, L2 refit). Dotted line, the full 2,000-gene model; dashed line, the first panel within two points of it.
 
 ### Generalisation to metastases
 
@@ -110,6 +125,8 @@ melanomas and with a shared melanocytic lineage.
 
 ![markers](results/figures/fig7_shap_markers.png)
 
+*Figure 7 | Marker lncRNAs.* Mean expression in the training tumours of the two highest-SHAP lncRNAs per cancer type, z-scored across cancer types.
+
 Per-cancer SHAP rankings are in [`results/tables/shap_markers_per_cancer.csv`](results/tables/shap_markers_per_cancer.csv).
 Many of the top markers are antisense transcripts of lineage transcription factors
 (*HAND2-AS1*, *NKX2-1-AS1*, *EMX2OS*, *DLX6-AS1*), which fits the view of lncRNAs as
@@ -124,6 +141,8 @@ top ten of the XGBoost model. The stable, model-independent markers are the ones
 reading biology into; the rest are interchangeable members of correlated groups.
 
 <p align="center"><img src="results/figures/fig14_marker_stability.png" width="85%"></p>
+
+*Figure 8 | Stability of the marker lists.* **a**, Jaccard overlap between the top-10 markers of each bootstrap refit and the full-data list, mean and 95% interval over 30 resamples. **b**, How often each of the 330 full-data markers is recovered; dashed line at 0.9.
 
 
 ### Does removing chrX/chrY genes matter? (ablation)
@@ -204,6 +223,8 @@ uses these thresholds.
 
 ![conformal](results/figures/fig8_conformal.png)
 
+*Figure 9 | Conformal prediction sets at α = 0.10.* **a**, Per-class coverage with the LAC score and one global (marginal) or one per-class threshold; dashed line, the nominal 90%. **b**, Mean set size against nominal coverage on the test set; open squares, the external metastases at 90%. **c**, Mean set size by non-conformity score, with the coverage above each bar.
+
 **Subgroups** (`scripts/09_subgroups.py`). Accuracy is the same for women and men and across
 age groups. It is lower for stage III and IV tumours (0.931 and 0.949, against 0.969 and 0.970
 for stages I and II; intervals overlap) and
@@ -213,11 +234,15 @@ classes are where the model is both less accurate and over-confident.
 
 ![subgroups](results/figures/fig9_subgroups.png)
 
+*Figure 10 | Subgroups.* **a**, Accuracy of the lncRNA model by class rarity, AJCC stage, age and sex on the test set; error bars, 95% bootstrap intervals. **b**, Per-class F1 against the number of training tumours; dotted line, 100 tumours.
+
 **Learning curve** (`scripts/10_learning_curve.py`). With 746 training tumours (10%), the
 lncRNA model already reaches macro-F1 0.895 and the protein-coding model 0.878; the gap in
 favour of lncRNAs holds at every training-set size.
 
 <p align="center"><img src="results/figures/fig10_learning_curve.png" width="60%"></p>
+
+*Figure 11 | Learning curve.* Test macro-F1 of logistic regression against training-set size; shading, the range over repeated random subsamples.
 
 **Unseen hospital sites** (`scripts/11_site_holdout.py`). TCGA barcodes name the tissue
 source site, and random cross-validation lets the same hospital appear in training and test
@@ -228,6 +253,8 @@ seen, and it is the same for both gene sets.
 
 <p align="center"><img src="results/figures/fig11_site_holdout.png" width="55%"></p>
 
+*Figure 12 | Unseen hospital sites.* Macro-F1 of 5-fold CV on the training split with random folds or with every tissue source site confined to one fold; bars, mean ± SD; points, the five folds.
+
 The site signal itself can be measured (`scripts/15_site_signal.py`): within a cancer type,
 predicting which hospital a tumour came from, for the 18 types with at least three sites of
 15 or more tumours, gives a balanced accuracy of 0.42 for lncRNAs and 0.37 for protein-coding
@@ -236,6 +263,8 @@ slightly more of it, so the equal cost of unseen sites above is not because lncR
 of batch effects.
 
 <p align="center"><img src="results/figures/fig15_site_signal.png" width="75%"></p>
+
+*Figure 13 | The hospital signal within a cancer type.* Balanced accuracy of predicting the tissue source site (5-fold CV) for cancer types with at least three sites of 15 or more tumours; black lines, chance.
 
 **External validation on MET500** (`scripts/12_met500.py`). MET500 (Robinson et al., 2017)
 holds RNA-seq of 437 patients' metastatic biopsies with the primary site recorded, from
@@ -251,6 +280,8 @@ independent metastatic cohort costs the coding model about a third of its accura
 
 ![met500](results/figures/fig12_met500.png)
 
+*Figure 14 | External validation on MET500.* **a**, Fraction of patients whose primary site is the top call, or among the top three, of the protein-coding model, by primary site. **b**, Top-1 accuracy by library type; error bars, 95% bootstrap intervals; dashed line, top-3 accuracy over all patients.
+
 **Calibration and biopsy site on MET500** (`scripts/13_met500_calibration.py`). On the TCGA
 test split the protein-coding model is well calibrated (expected calibration error 0.012);
 on MET500 it is over-confident (mean confidence 0.79 against 0.66 accuracy, ECE 0.126).
@@ -265,6 +296,8 @@ carries the expression of the organ it grows in, and the classifier has no way t
 two apart.
 
 ![met500 calibration](results/figures/fig13_met500_calibration.png)
+
+*Figure 15 | Calibration and biopsy site on MET500.* **a**, **b**, Reliability of the protein-coding model on the TCGA test split and on MET500, raw and after temperature scaling fitted on TCGA. **c**, Fraction of MET500 patients whose primary site is recovered, and fraction called the cancer of the biopsy organ, by biopsy site; error bars, 95% bootstrap intervals.
 
 **Tumour or neighbourhood? Immune and stromal admixture** (`scripts/17_microenvironment.py`).
 Bulk tissue mixes tumour cells with stroma and immune cells, so a tissue-of-origin model could
@@ -305,6 +338,7 @@ uv sync
 make data       # download TCGA (UCSC Xena) + GENCODE v23          (~750 MB)
 make all        # prepare, benchmark, budget, interpret, external, figures, ablation, conformal, subgroups, curve, sites, met500, met500-calibration, markers, site-signal, panel
 make test       # unit tests
+make figures    # redraw every figure from the saved tables, no refitting
 ```
 
 Every step reads `configs/default.yaml`; changing the seed, split, feature budget or
@@ -386,11 +420,12 @@ src/lncpan/
   calibration.py            temperature scaling, reliability curves
   cli.py                    `lncpan predict`
   isolation.py              per-model process isolation (see note below)
+  plotting.py               figure style (Nature specifications: Arial 5 to 7 pt, 89/183 mm widths, Wong palette)
 scripts/01…17_*.py          pipeline steps and the analyses above (wired into the Makefile)
 scripts/18_seed_stability.py  pools benchmark runs over seeds
 main.nf, modules/, nextflow.config  Nextflow seed-stability pipeline (profiles: default, test)
 tests/                      pytest suite, run in CI
-results/tables, figures     all numbers and figures shown in this README
+results/tables, figures     all numbers and figures shown in this README (PNG for display, PDF vector originals)
 ```
 
 *Implementation note.* On macOS, XGBoost links Homebrew's OpenMP while PyTorch bundles its

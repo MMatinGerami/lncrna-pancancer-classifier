@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -36,7 +37,7 @@ from lncpan.calibration import apply_temperature, fit_temperature, reliability_c
 from lncpan.config import load_config
 from lncpan.io import load_dataset
 from lncpan.models import build_model
-from lncpan.plotting import INK_2, INK_3, UNIVERSE_COLORS, apply_style
+from lncpan.plotting import DOUBLE, INK, INK_3, MM, UNIVERSE_COLORS, apply_style, panel_label, save
 
 UNIVERSE = "protein_coding"
 CALIBRATION_FRACTION = 0.15
@@ -151,6 +152,7 @@ def main() -> None:
     sites = pd.DataFrame(site_rows).sort_values("n", ascending=False)
     sites.to_csv(tables / "met500_by_biopsy_site.csv", index=False)
     print(sites.round(3).to_string(index=False))
+    curves_to_frame(curves).to_csv(tables / "met500_reliability_curves.csv", index=False)
     plot(curves, calib, sites, figures)
 
 
@@ -161,13 +163,39 @@ def ece_from_flags(correct: np.ndarray, conf: np.ndarray, n_bins: int = 15) -> f
     return float((n[m] / n.sum() * np.abs(acc[m] - mean_conf[m])).sum())
 
 
+def curves_to_frame(curves) -> pd.DataFrame:
+    rows = []
+    for (split, stage), (acc, conf, n) in curves.items():
+        for b, (a, c, k) in enumerate(zip(acc, conf, n, strict=True)):
+            rows.append(
+                {
+                    "split": split,
+                    "stage": stage,
+                    "bin": b,
+                    "accuracy": a,
+                    "confidence": c,
+                    "n": int(k),
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def frame_to_curves(df: pd.DataFrame) -> dict:
+    return {
+        (split, stage): (g["accuracy"].to_numpy(), g["confidence"].to_numpy(), g["n"].to_numpy())
+        for (split, stage), g in df.sort_values("bin").groupby(["split", "stage"])
+    }
+
+
 def plot(curves, calib: pd.DataFrame, sites: pd.DataFrame, figures) -> None:
     apply_style()
-    fig, axes = plt.subplots(1, 3, figsize=(13, 3.9), gridspec_kw={"width_ratios": [1, 1, 1.3]})
+    fig, axes = plt.subplots(
+        1, 3, figsize=(DOUBLE, 60 * MM), gridspec_kw={"width_ratios": [1, 1, 1.5]}
+    )
     colour = UNIVERSE_COLORS[UNIVERSE]
-    for ax, split in zip(axes[:2], ("TCGA test", "MET500"), strict=True):
-        ax.plot([0, 1], [0, 1], color=INK_3, lw=1, ls="--")
-        for stage, style in (("raw", "o-"), ("temperature scaled", "s--")):
+    for ax, letter, split in zip(axes[:2], "ab", ("TCGA test", "MET500"), strict=True):
+        ax.plot([0, 1], [0, 1], color=INK_3, lw=0.6, ls="--")
+        for stage, style, face in (("raw", "o-", colour), ("temperature scaled", "s--", "white")):
             acc, conf, n = curves[(split, stage)]
             m = n >= 5
             e = calib[(calib.split == split) & (calib.stage == stage)]["ece"].item()
@@ -176,14 +204,18 @@ def plot(curves, calib: pd.DataFrame, sites: pd.DataFrame, figures) -> None:
                 acc[m],
                 style,
                 color=colour,
-                alpha=1.0 if stage == "raw" else 0.55,
-                label=f"{stage} (ECE {e:.3f})",
+                markerfacecolor=face,
+                label=f"{stage.capitalize()} (ECE {e:.3f})",
             )
-        ax.set(xlim=(0, 1), ylim=(0, 1), xlabel="Confidence", ylabel="Accuracy", title=split)
-        ax.legend(loc="upper left", fontsize=7)
+        ax.set(xlim=(0, 1), ylim=(0, 1), xlabel="Confidence", ylabel="Accuracy", aspect="equal")
+        ax.set_title(split, fontsize=6.5, loc="left")
+        ax.legend(loc="lower right")
+        panel_label(ax, letter, x=-0.3, y=1.06)
     ax = axes[2]
     x = np.arange(len(sites))
-    ax.bar(x - 0.2, sites["accuracy"], width=0.4, color=colour, label="top-1 correct")
+    ax.bar(
+        x - 0.2, sites["accuracy"], width=0.4, color=colour, label="Primary site recovered", lw=0
+    )
     ax.errorbar(
         x - 0.2,
         sites["accuracy"],
@@ -192,32 +224,49 @@ def plot(curves, calib: pd.DataFrame, sites: pd.DataFrame, figures) -> None:
             sites["accuracy_high"] - sites["accuracy"],
         ],
         fmt="none",
-        ecolor=INK_2,
-        capsize=2,
-        lw=1,
+        ecolor=INK,
+        elinewidth=0.8,
     )
     ax.bar(
         x + 0.2,
         sites["predicted_biopsy_organ"].fillna(0),
         width=0.4,
-        color="#b8b7b3",
-        label="predicted the biopsy organ",
+        color="#999999",
+        label="Biopsy organ predicted",
+        lw=0,
     )
-    ax.set_xticks(x)
-    ax.set_xticklabels(
+    ax.set_xticks(
+        x,
         [
-            f"{s.replace('_', ' ')}\n(n={n})"
+            f"{s.replace('_', ' ').capitalize()}\n(n = {n})"
             for s, n in zip(sites["biopsy_site"], sites["n"], strict=True)
         ],
-        fontsize=7,
+        fontsize=5,
         rotation=30,
         ha="right",
+        rotation_mode="anchor",
     )
-    ax.set(ylim=(0, 1.02), ylabel="Fraction of patients", title="MET500 by biopsy site")
-    ax.legend(loc="upper right", fontsize=7)
-    fig.savefig(figures / "fig13_met500_calibration.png")
-    plt.close(fig)
+    ax.set(
+        xlim=(-0.7, len(sites) - 0.3),
+        ylim=(0, 1.0),
+        ylabel="Fraction of patients",
+        xlabel="Biopsy site",
+    )
+    ax.legend(loc="lower left", bbox_to_anchor=(0, 1.0), ncol=2)
+    panel_label(ax, "c", x=-0.15, y=1.06)
+    fig.tight_layout(w_pad=2)
+    save(fig, figures / "fig13_met500_calibration")
 
 
 if __name__ == "__main__":
-    main()
+    if "--plot-only" in sys.argv:  # redraw from the saved tables, no refitting
+        res = load_config().path("results")
+        tab = res / "tables"
+        plot(
+            frame_to_curves(pd.read_csv(tab / "met500_reliability_curves.csv")),
+            pd.read_csv(tab / "met500_calibration.csv"),
+            pd.read_csv(tab / "met500_by_biopsy_site.csv"),
+            res / "figures",
+        )
+    else:
+        main()

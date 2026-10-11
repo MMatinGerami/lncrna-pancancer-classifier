@@ -9,6 +9,7 @@ Writes results/tables/learning_curve.csv and figures/fig10_learning_curve.png.
 from __future__ import annotations
 
 import json
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,7 +21,7 @@ from sklearn.model_selection import StratifiedShuffleSplit
 from lncpan.config import load_config
 from lncpan.io import load_dataset
 from lncpan.models import build_model
-from lncpan.plotting import UNIVERSE_COLORS, UNIVERSE_LABELS, apply_style
+from lncpan.plotting import MM, SINGLE, UNIVERSE_COLORS, UNIVERSE_LABELS, apply_style, save
 
 FRACTIONS = (0.1, 0.2, 0.35, 0.5, 0.75, 1.0)
 N_REPEATS = 3
@@ -69,7 +70,7 @@ def main() -> None:
 
 def plot(out: pd.DataFrame, figures) -> None:
     apply_style()
-    fig, ax = plt.subplots(figsize=(5.2, 3.4))
+    fig, ax = plt.subplots(figsize=(SINGLE, 55 * MM))
     for universe, sub in out.groupby("universe"):
         g = sub.groupby("n_train")["macro_f1"].agg(["mean", "min", "max"]).reset_index()
         ax.plot(
@@ -80,22 +81,19 @@ def plot(out: pd.DataFrame, figures) -> None:
             label=UNIVERSE_LABELS[universe],
         )
         ax.fill_between(
-            g["n_train"], g["min"], g["max"], color=UNIVERSE_COLORS[universe], alpha=0.15, lw=0
+            g["n_train"], g["min"], g["max"], color=UNIVERSE_COLORS[universe], alpha=0.2, lw=0
         )
-    ax.set(
-        xscale="log",
-        xlabel="Training tumours",
-        ylabel="Test macro-F1",
-        title="Learning curve (logistic regression)",
-    )
+    ax.set(xscale="log", xlabel="Training tumours", ylabel="Macro-F1 (test set)")
     sizes = sorted(out["n_train"].unique())
-    ax.set_xticks(sizes)
-    ax.set_xticklabels([f"{n:,}" for n in sizes], fontsize=7)
+    ax.set_xticks(sizes, [f"{n:,}" for n in sizes])
     ax.xaxis.set_minor_locator(NullLocator())
     ax.legend(loc="lower right")
-    fig.savefig(figures / "fig10_learning_curve.png")
-    plt.close(fig)
+    save(fig, figures / "fig10_learning_curve")
 
 
 if __name__ == "__main__":
-    main()
+    if "--plot-only" in sys.argv:  # redraw from the saved table, no refitting
+        res = load_config().path("results")
+        plot(pd.read_csv(res / "tables" / "learning_curve.csv"), res / "figures")
+    else:
+        main()

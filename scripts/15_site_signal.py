@@ -15,6 +15,8 @@ Writes results/tables/site_signal.csv and figures/fig15_site_signal.png.
 
 from __future__ import annotations
 
+import sys
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -24,7 +26,7 @@ from sklearn.model_selection import StratifiedKFold
 from lncpan.config import load_config
 from lncpan.io import load_dataset
 from lncpan.models import build_model
-from lncpan.plotting import INK_2, INK_3, UNIVERSE_COLORS, UNIVERSE_LABELS, apply_style
+from lncpan.plotting import DOUBLE, INK, MM, UNIVERSE_COLORS, UNIVERSE_LABELS, apply_style, save
 
 MIN_SITE_N = 15
 MIN_SITES = 3
@@ -83,7 +85,7 @@ def main() -> None:
 
 def plot(out: pd.DataFrame, figures) -> None:
     apply_style()
-    fig, ax = plt.subplots(figsize=(10, 3.8))
+    fig, ax = plt.subplots(figsize=(DOUBLE, 58 * MM))
     order = out[out.universe == "lncRNA"].sort_values("balanced_accuracy")["cancer_type"].tolist()
     x = np.arange(len(order))
     for universe, dx in (("lncRNA", -0.2), ("protein_coding", 0.2)):
@@ -94,27 +96,26 @@ def plot(out: pd.DataFrame, figures) -> None:
             width=0.4,
             color=UNIVERSE_COLORS[universe],
             label=UNIVERSE_LABELS[universe],
+            lw=0,
         )
     chance = out[out.universe == "lncRNA"].set_index("cancer_type").loc[order]
-    ax.scatter(x, chance["chance"], marker="_", s=300, color=INK_3, zorder=3, label="chance")
-    ax.set_xticks(x)
-    ax.set_xticklabels(
-        [f"{c}\n{int(n)} sites" for c, n in zip(order, chance["n_sites"], strict=True)],
-        fontsize=6.5,
+    ax.hlines(chance["chance"], x - 0.42, x + 0.42, color=INK, lw=0.8, zorder=3, label="Chance")
+    ax.set_xticks(
+        x, [f"{c}\n({int(n)})" for c, n in zip(order, chance["n_sites"], strict=True)], fontsize=5
     )
     ax.set(
-        ylim=(0, 1.02),
+        xlim=(-0.7, len(order) - 0.3),
+        ylim=(0, 1.0),
         ylabel="Balanced accuracy (5-fold CV)",
-        title="Predicting the tissue source site within a cancer type",
+        xlabel="Cancer type (number of tissue source sites)",
     )
-    ax.set_xlabel(
-        "Cancer type (training tumours at sites with at least 15; sorted by lncRNA accuracy)",
-        color=INK_2,
-    )
-    ax.legend(loc="upper left", fontsize=8)
-    fig.savefig(figures / "fig15_site_signal.png")
-    plt.close(fig)
+    ax.legend(loc="upper left", ncol=3)
+    save(fig, figures / "fig15_site_signal")
 
 
 if __name__ == "__main__":
-    main()
+    if "--plot-only" in sys.argv:  # redraw from the saved table, no refitting
+        res = load_config().path("results")
+        plot(pd.read_csv(res / "tables" / "site_signal.csv"), res / "figures")
+    else:
+        main()

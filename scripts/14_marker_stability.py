@@ -19,6 +19,7 @@ Writes results/tables/marker_stability{,_per_gene}.csv and figures/fig14_marker_
 from __future__ import annotations
 
 import json
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,7 +28,7 @@ import pandas as pd
 from lncpan.config import load_config
 from lncpan.io import load_dataset
 from lncpan.models import build_model
-from lncpan.plotting import INK_2, INK_3, UNIVERSE_COLORS, apply_style
+from lncpan.plotting import DOUBLE, INK, INK_3, MM, UNIVERSE_COLORS, apply_style, panel_label, save
 
 UNIVERSE = "lncRNA"
 N_BOOT = 30
@@ -116,48 +117,57 @@ def main() -> None:
 
 def plot(summary: pd.DataFrame, per_gene: pd.DataFrame, figures) -> None:
     apply_style()
-    fig, axes = plt.subplots(1, 2, figsize=(11, 3.8), gridspec_kw={"width_ratios": [3, 1.3]})
+    fig, axes = plt.subplots(
+        1, 2, figsize=(DOUBLE * 0.9, 58 * MM), gridspec_kw={"width_ratios": [3, 1.1]}
+    )
+    colour = UNIVERSE_COLORS[UNIVERSE]
     ax = axes[0]
     d = summary.sort_values("n_train")
     x = np.arange(len(d))
-    ax.bar(x, d["jaccard_mean"], color=UNIVERSE_COLORS[UNIVERSE])
+    ax.bar(x, d["jaccard_mean"], color=colour, lw=0)
     ax.errorbar(
         x,
         d["jaccard_mean"],
         yerr=[d["jaccard_mean"] - d["jaccard_low"], d["jaccard_high"] - d["jaccard_mean"]],
         fmt="none",
-        ecolor=INK_2,
-        capsize=2,
-        lw=1,
+        ecolor=INK,
+        elinewidth=0.8,
     )
-    ax.set_xticks(x)
-    ax.set_xticklabels(
+    ax.set_xticks(
+        x,
         [f"{c} ({n})" for c, n in zip(d["cancer_type"], d["n_train"], strict=True)],
-        fontsize=6,
         rotation=90,
+        fontsize=5,
     )
     ax.set(
-        ylim=(0, 1.02),
-        ylabel="Jaccard overlap with full-data top 10",
-        title=f"Stability of the top-10 marker lncRNAs over {N_BOOT} bootstrap refits",
+        xlim=(-0.7, len(d) - 0.3),
+        ylim=(0, 1.0),
+        ylabel="Jaccard overlap, top-10 markers",
+        xlabel="Cancer type (number of training tumours)",
     )
-    ax.set_xlabel("Cancer type and number of training tumours (sorted by size)", color=INK_2)
+    panel_label(ax, "a", x=-0.08, y=1.06)
     ax = axes[1]
     ax.hist(
         per_gene["selection_frequency"],
         bins=np.linspace(0, 1, 11),
-        color=UNIVERSE_COLORS[UNIVERSE],
+        color=colour,
         edgecolor="white",
+        lw=0.4,
     )
-    ax.axvline(0.9, color=INK_3, ls="--", lw=1)
-    ax.set(
-        xlabel="Selection frequency across resamples",
-        ylabel="Number of markers (33 types × 10)",
-        title="How often a marker is recovered",
-    )
-    fig.savefig(figures / "fig14_marker_stability.png")
-    plt.close(fig)
+    ax.axvline(0.9, color=INK_3, ls="--", lw=0.6)
+    ax.set(xlabel="Selection frequency across resamples", ylabel="Number of markers")
+    panel_label(ax, "b", x=-0.3, y=1.06)
+    fig.tight_layout(w_pad=2)
+    save(fig, figures / "fig14_marker_stability")
 
 
 if __name__ == "__main__":
-    main()
+    if "--plot-only" in sys.argv:  # redraw from the saved tables, no refitting
+        res = load_config().path("results")
+        plot(
+            pd.read_csv(res / "tables" / "marker_stability.csv"),
+            pd.read_csv(res / "tables" / "marker_stability_per_gene.csv"),
+            res / "figures",
+        )
+    else:
+        main()

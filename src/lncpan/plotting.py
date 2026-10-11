@@ -1,43 +1,97 @@
-"""Shared figure style."""
+"""Shared figure style, following Nature's figure specifications.
+
+Arial at 5-7 pt, bold lowercase panel labels at 8 pt, no background grid, axis lines and
+ticks only, a colour-blind-safe palette (Wong, Nat. Methods 8, 441; 2011), and widths of one
+(89 mm) or two (183 mm) journal columns. Messages belong in the caption, not on the figure,
+so panels carry letters instead of titles. Every figure is saved as an editable vector PDF
+and a 300 dpi PNG for the README.
+"""
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import matplotlib as mpl
+import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
-INK, INK_2, INK_3 = "#0b0b0b", "#52514e", "#8a8984"
-GRID = "#e6e5e0"
-UNIVERSE_COLORS = {"lncRNA": "#2a78d6", "protein_coding": "#eb6834"}
+MM = 1 / 25.4  # inches per millimetre
+SINGLE = 89 * MM  # one Nature column
+ONE_HALF = 120 * MM
+DOUBLE = 183 * MM  # two Nature columns
+
+INK, INK_2, INK_3 = "#000000", "#333333", "#777777"
+GRID = "#dddddd"  # kept for reference lines only; no background grid
+# Wong palette: blue and vermillion stay distinct under every common colour-vision deficiency
+BLUE, VERMILLION, ORANGE, SKY, GREEN = "#0072B2", "#D55E00", "#E69F00", "#56B4E9", "#009E73"
+UNIVERSE_COLORS = {"lncRNA": BLUE, "protein_coding": VERMILLION}
 UNIVERSE_LABELS = {"lncRNA": "lncRNA", "protein_coding": "Protein-coding"}
-MODEL_LABELS = {"logreg": "Logistic regression", "xgboost": "XGBoost", "mlp": "MLP (PyTorch)"}
-SEQUENTIAL = LinearSegmentedColormap.from_list(
-    "seq_blue", ["#f7f6f3", "#9cc3ef", "#2a78d6", "#0d3f80"]
-)
-DIVERGING = LinearSegmentedColormap.from_list("div", ["#2a78d6", "#efeeea", "#e34948"])
+MODEL_LABELS = {"logreg": "Logistic regression", "xgboost": "XGBoost", "mlp": "MLP"}
+SEQUENTIAL = LinearSegmentedColormap.from_list("seq_blue", ["#ffffff", "#9ecae1", BLUE, "#08306b"])
+DIVERGING = LinearSegmentedColormap.from_list("div", [BLUE, "#f7f7f7", VERMILLION])
 
 
 def apply_style() -> None:
     mpl.rcParams.update(
         {
+            "font.family": "sans-serif",
+            "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
+            "font.size": 6,
+            "axes.labelsize": 6.5,
+            "axes.titlesize": 6.5,
+            "axes.titleweight": "normal",
+            "xtick.labelsize": 6,
+            "ytick.labelsize": 6,
+            "legend.fontsize": 6,
+            "legend.frameon": False,
+            "legend.handlelength": 1.4,
+            "legend.borderaxespad": 0.2,
+            "axes.linewidth": 0.6,
+            "axes.edgecolor": INK,
+            "axes.labelcolor": INK,
+            "axes.titlecolor": INK,
+            "text.color": INK,
+            "xtick.color": INK,
+            "ytick.color": INK,
+            "xtick.major.width": 0.6,
+            "ytick.major.width": 0.6,
+            "xtick.major.size": 2.5,
+            "ytick.major.size": 2.5,
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+            "axes.grid": False,
+            "lines.linewidth": 1.0,
+            "lines.markersize": 3.5,
+            "errorbar.capsize": 1.5,
+            "patch.linewidth": 0.4,
             "figure.dpi": 150,
             "savefig.dpi": 300,
             "savefig.bbox": "tight",
-            "font.size": 9,
-            "axes.titlesize": 10,
-            "axes.titleweight": "bold",
-            "axes.labelsize": 9,
-            "axes.edgecolor": INK_3,
-            "axes.labelcolor": INK_2,
-            "axes.titlecolor": INK,
-            "xtick.color": INK_2,
-            "ytick.color": INK_2,
-            "text.color": INK,
-            "axes.spines.top": False,
-            "axes.spines.right": False,
-            "axes.grid": True,
-            "grid.color": GRID,
-            "grid.linewidth": 0.6,
-            "legend.frameon": False,
-            "lines.linewidth": 2,
+            "savefig.pad_inches": 0.02,
+            "pdf.fonttype": 42,  # embed TrueType so text stays editable
+            "ps.fonttype": 42,
+            "svg.fonttype": "none",
         }
     )
+
+
+def panel_label(ax, letter: str, x: float = -0.12, y: float = 1.04) -> None:
+    """Bold lowercase panel letter at the top left, outside the axes (Nature style)."""
+    ax.text(
+        x,
+        y,
+        letter,
+        transform=ax.transAxes,
+        fontsize=8,
+        fontweight="bold",
+        va="bottom",
+        ha="left",
+    )
+
+
+def save(fig, path: Path) -> None:
+    """Write the vector PDF (for print) and a 300 dpi PNG (for the README)."""
+    path = Path(path)
+    fig.savefig(path.with_suffix(".pdf"))
+    fig.savefig(path.with_suffix(".png"))
+    plt.close(fig)

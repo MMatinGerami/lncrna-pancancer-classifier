@@ -8,7 +8,7 @@ benchmark:   ; uv run python scripts/02_benchmark.py
 budget:      ; uv run python scripts/03_feature_budget.py
 interpret:   ; uv run python scripts/04_interpret.py
 external:    ; uv run python scripts/05_external_metastases.py
-figures:     ; uv run python scripts/06_figures.py
+figures:     ; uv run python scripts/06_figures.py && for s in 08 09 10 11 12 13 14 15 16; do uv run python scripts/$${s}_*.py --plot-only || exit 1; done
 ablation:    ; uv run python scripts/07_ablation_sex_chromosomes.py
 conformal:   ; uv run python scripts/08_conformal.py
 subgroups:   ; uv run python scripts/09_subgroups.py

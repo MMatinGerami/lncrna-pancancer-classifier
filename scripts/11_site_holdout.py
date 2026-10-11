@@ -17,6 +17,7 @@ Writes results/tables/site_holdout.csv and figures/fig11_site_holdout.png.
 from __future__ import annotations
 
 import json
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,7 +29,7 @@ from lncpan.config import load_config
 from lncpan.data import parse_barcode
 from lncpan.io import load_dataset
 from lncpan.models import build_model
-from lncpan.plotting import UNIVERSE_COLORS, UNIVERSE_LABELS, apply_style
+from lncpan.plotting import INK, MM, SINGLE, UNIVERSE_COLORS, UNIVERSE_LABELS, apply_style, save
 
 N_FOLDS = 5
 
@@ -91,36 +92,39 @@ def main() -> None:
 
 def plot(out: pd.DataFrame, figures) -> None:
     apply_style()
-    fig, ax = plt.subplots(figsize=(5.4, 3.4))
+    fig, ax = plt.subplots(figsize=(SINGLE * 0.85, 55 * MM))
     schemes = ["random", "held-out sites"]
     x = np.arange(len(schemes))
+    rng = np.random.default_rng(0)
     for i, universe in enumerate(("lncRNA", "protein_coding")):
         d = out[out.universe == universe]
         means = [d[d.scheme == s]["macro_f1"].mean() for s in schemes]
         sds = [d[d.scheme == s]["macro_f1"].std() for s in schemes]
+        pos = x + (i - 0.5) * 0.38
         ax.bar(
-            x + (i - 0.5) * 0.36,
+            pos,
             means,
             yerr=sds,
             width=0.36,
-            capsize=3,
             color=UNIVERSE_COLORS[universe],
             label=UNIVERSE_LABELS[universe],
+            lw=0,
+            error_kw={"elinewidth": 0.8},
         )
-        for xi, s in zip(x, schemes, strict=True):
-            for _, r in d[d.scheme == s].iterrows():
-                ax.scatter(xi + (i - 0.5) * 0.36, r["macro_f1"], s=8, color="#0b0b0b", zorder=3)
-    ax.set_xticks(x)
-    ax.set_xticklabels(["Random folds", "Held-out sites"])
-    ax.set(
-        ylim=(0.85, 1.0),
-        ylabel="Macro-F1 (5-fold CV, training split)",
-        title="Generalisation to unseen hospital sites",
-    )
+        for xi, s in zip(pos, schemes, strict=True):
+            vals = d[d.scheme == s]["macro_f1"].to_numpy()
+            ax.scatter(
+                xi + rng.uniform(-0.08, 0.08, len(vals)), vals, s=5, color=INK, zorder=3, lw=0
+            )
+    ax.set_xticks(x, ["Random folds", "Held-out sites"])
+    ax.set(ylim=(0.85, 1.0), ylabel="Macro-F1 (5-fold CV)")
     ax.legend(loc="upper right")
-    fig.savefig(figures / "fig11_site_holdout.png")
-    plt.close(fig)
+    save(fig, figures / "fig11_site_holdout")
 
 
 if __name__ == "__main__":
-    main()
+    if "--plot-only" in sys.argv:  # redraw from the saved table, no refitting
+        res = load_config().path("results")
+        plot(pd.read_csv(res / "tables" / "site_holdout.csv"), res / "figures")
+    else:
+        main()

@@ -15,6 +15,7 @@ panel within two points of the full model) and figures/fig16_sparse_panel.png.
 from __future__ import annotations
 
 import json
+import sys
 import time
 
 import matplotlib.pyplot as plt
@@ -29,7 +30,7 @@ from lncpan.config import load_config
 from lncpan.features import TopVarianceSelector
 from lncpan.io import load_dataset
 from lncpan.models import build_model
-from lncpan.plotting import INK_2, INK_3, UNIVERSE_COLORS, apply_style
+from lncpan.plotting import INK_2, INK_3, MM, SINGLE, UNIVERSE_COLORS, apply_style, save
 
 UNIVERSE = "lncRNA"
 L1_C = (0.002, 0.005, 0.01, 0.02, 0.05, 0.1)
@@ -130,43 +131,43 @@ def top3(model, X, y) -> float:
 
 def plot(out: pd.DataFrame, full_f1: float, chosen: int, figures) -> None:
     apply_style()
-    fig, ax = plt.subplots(figsize=(5.6, 3.6))
+    fig, ax = plt.subplots(figsize=(SINGLE, 55 * MM))
     colour = UNIVERSE_COLORS[UNIVERSE]
-    ax.plot(out["n_genes"], out["test_macro_f1"], "o-", color=colour, label="test macro-F1")
+    ax.plot(out["n_genes"], out["test_macro_f1"], "o-", color=colour, label="Macro-F1, test set")
     ax.plot(
         out["n_genes"],
         out["external_accuracy"],
         "s--",
         color=colour,
-        alpha=0.55,
-        label="metastases accuracy",
+        markerfacecolor="white",
+        label="Accuracy, external metastases",
     )
-    ax.axhline(full_f1, color=INK_3, lw=1, ls=":")
+    ax.axhline(full_f1, color=INK_3, lw=0.6, ls=":")
     ax.text(
-        out["n_genes"].min(), full_f1 + 0.004, "full model (2,000 genes)", fontsize=7, color=INK_2
+        out["n_genes"].min(), full_f1 + 0.01, "Full model (2,000 genes)", fontsize=5, color=INK_2
     )
-    ax.axvline(chosen, color=INK_3, lw=1, ls="--")
-    ax.text(
-        chosen * 1.04,
-        0.62,
-        f"{chosen} genes:\nwithin 2 points\nof the full model",
-        fontsize=7,
-        color=INK_2,
-    )
+    ax.axvline(chosen, color=INK_3, lw=0.6, ls="--")
+    ax.text(chosen * 1.06, 0.62, f"{chosen} genes", fontsize=5, color=INK_2)
     ax.set(
         xscale="log",
         xticks=out["n_genes"].tolist(),
         xticklabels=[str(n) for n in out["n_genes"]],
-        xlabel="Genes in the panel (L1 selection, L2 refit)",
+        xlabel="Genes in the panel",
         ylabel="Score",
         ylim=(0.45, 1.0),
-        title="A sparse lncRNA panel",
     )
     ax.xaxis.set_minor_locator(plt.NullLocator())
-    ax.legend(loc="lower right", fontsize=8)
-    fig.savefig(figures / "fig16_sparse_panel.png")
-    plt.close(fig)
+    ax.legend(loc="lower right")
+    save(fig, figures / "fig16_sparse_panel")
 
 
 if __name__ == "__main__":
-    main()
+    if "--plot-only" in sys.argv:  # redraw from the saved table, no refitting
+        res = load_config().path("results")
+        out = pd.read_csv(res / "tables" / "sparse_panel.csv")
+        full_f1 = float(out["full_model_macro_f1"].iloc[0])
+        ok = out[out["test_macro_f1"] >= full_f1 - TOLERANCE]
+        chosen = int(ok["n_genes"].min()) if not ok.empty else int(out["n_genes"].max())
+        plot(out, full_f1, chosen, res / "figures")
+    else:
+        main()

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Figures redrawn to journal specifications (Nature figure guide): panel letters instead of titles, Arial at 5 to 7 pt, single- or double-column widths, no background grid, the colour-blind-safe Wong palette, and an editable PDF next to every PNG. Messages moved from figure titles to captions in the README. The label overlaps in Figures 1, 8, 9, 12 and 13 are fixed. `lncpan.plotting` holds the style; `make figures` and `--plot-only` redraw everything from the saved tables (the t-SNE embedding and the MET500 reliability curves are now saved as tables). No result changed.
 - Seed stability for all three models (seeds 42 to 46): logistic regression varies least (macro-F1 SD 0.0001 lncRNA), the MLP most (0.009); the lncRNA advantage holds for every seed with logistic regression and XGBoost but not the MLP.
 - Nextflow seed-stability pipeline (`main.nf`, `modules/benchmark.nf`, `nextflow.config`, `scripts/18_seed_stability.py`): each gene universe x model x seed is a cached, resource-limited task; `-profile test` runs on synthetic data (`scripts/make_toy_data.py`, `configs/toy.yaml`) and in CI. Logistic regression over seeds 42 to 46: lncRNA macro-F1 SD 0.0001, protein-coding 0.0012, lncRNA ahead for every seed.
 - `02_benchmark.py` takes `--config`, `--seed`, `--processed` and `--results` (`lncpan.config.with_overrides`).
