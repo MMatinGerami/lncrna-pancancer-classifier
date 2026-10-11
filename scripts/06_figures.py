@@ -169,24 +169,27 @@ def fig_per_class(metrics: pd.DataFrame) -> None:
     lo = max(0, df.min().min() - 0.05)
     ax.plot([lo, 1.01], [lo, 1.01], color=INK_3, lw=0.6, ls="--", zorder=1)
     ax.scatter(df.protein_coding, df.lncRNA, s=10, color=BLUE, edgecolor="white", lw=0.4, zorder=3)
-    for name, r in df.iterrows():
-        if r.min() < 0.9 or abs(r.lncRNA - r.protein_coding) > 0.05:
-            # label above the point when another labelled point sits just to the right
-            others = df.drop(name)
-            crowded = (
-                (others.protein_coding.between(r.protein_coding, r.protein_coding + 0.07))
-                & ((others.lncRNA - r.lncRNA).abs() < 0.03)
-            ).any()
-            ax.annotate(
-                name,
-                (r.protein_coding, r.lncRNA),
-                xytext=(0, 3) if crowded else (3, -2),
-                ha="center" if crowded else "left",
-                va="bottom" if crowded else "center",
-                textcoords="offset points",
-                fontsize=5,
-                color=INK_2,
-            )
+    labelled = df[(df.min(axis=1) < 0.9) | ((df.lncRNA - df.protein_coding).abs() > 0.05)]
+    pts = labelled[["protein_coding", "lncRNA"]].to_numpy()
+    # labels start to the right of their point and are pushed apart; a thin leader line
+    # connects any label that had to move
+    order = np.argsort(pts[:, 0])
+    offsets = np.zeros_like(pts)
+    offsets[order] = [(0.025, 0.02 if i % 2 == 0 else -0.02) for i in range(len(order))]
+    offsets[pts[:, 1] > 0.95] = (-0.09, 0.0)  # near the dense top-right corner: label leftwards
+    pos = _spread_labels(pts + offsets, box=(0.09, 0.026))
+    for name, pt, xy in zip(labelled.index, pts, pos, strict=True):
+        ax.annotate(
+            name,
+            pt,
+            xytext=xy,
+            textcoords="data",
+            fontsize=5,
+            color=INK_2,
+            ha="left",
+            va="center",
+            arrowprops={"arrowstyle": "-", "lw": 0.3, "color": INK_3, "shrinkA": 0, "shrinkB": 1.5},
+        )
     ax.set(
         xlim=(lo, 1.01),
         ylim=(lo, 1.01),
